@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sunday board</title>
+<style>
+  :root{
+    --paper:#FBFAF7; --ink:#1C2128; --soft:#5A6572; --rule:#DDDCD4;
+    --field:#25603F; --pale:#E8F0EB; --live:#C0492B; --hold:#B8860B;
+    --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;padding:22px 16px 80px;background:var(--paper);color:var(--ink);
+    font:15px/1.5 "Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif}
+  .wrap{max-width:860px;margin:0 auto}
+  header{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;
+    flex-wrap:wrap;border-bottom:2px solid var(--ink);padding-bottom:10px}
+  h1{font-size:25px;font-weight:600;margin:0;letter-spacing:-.01em}
+  .meta{font-family:var(--mono);font-size:11.5px;color:var(--soft);text-align:right;line-height:1.7}
+  .bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:12px 0 4px}
+  button{font:inherit;font-size:13.5px;padding:6px 13px;border:1px solid var(--ink);
+    background:transparent;color:var(--ink);border-radius:2px;cursor:pointer}
+  button.solid{background:var(--ink);color:var(--paper)}
+  button:disabled{opacity:.45;cursor:default}
+  button:focus-visible{outline:2px solid var(--field);outline-offset:2px}
+  label.auto{font-size:13.5px;color:var(--soft);display:flex;gap:6px;align-items:center;cursor:pointer}
+
+  .team{border-bottom:1px solid var(--rule)}
+  .row{display:grid;grid-template-columns:1fr auto auto;gap:14px;align-items:center;
+    padding:11px 2px;cursor:pointer}
+  .row:hover{background:#F4F3ED}
+  .name{font-weight:600;font-size:16px;display:flex;align-items:center;gap:8px}
+  .league{display:block;font-weight:400;font-size:12px;color:var(--soft);margin-top:1px}
+  .prog{font-family:var(--mono);font-size:11.5px;color:var(--soft);text-align:right;white-space:nowrap}
+  .score{font-family:var(--mono);font-size:22px;font-weight:600;min-width:84px;text-align:right}
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--rule);flex:none}
+  .dot.live{background:var(--live)}
+  .dot.done{background:var(--field)}
+
+  .detail{display:none;padding:2px 2px 16px}
+  .team.open .detail{display:block}
+  table{width:100%;border-collapse:collapse;font-size:13.5px}
+  th{text-align:left;font-weight:600;font-size:11px;color:var(--soft);padding:4px 8px 4px 0;
+    border-bottom:1px solid var(--rule)}
+  td{padding:4px 8px 4px 0;border-bottom:1px solid #EDECE4;vertical-align:top}
+  td.n{font-family:var(--mono);font-size:12.5px;color:var(--soft)}
+  td.p{font-family:var(--mono);font-size:13.5px;font-weight:600;text-align:right;width:62px}
+  tr.yet td{color:var(--soft)}
+  tr.playing td.n{color:var(--live)}
+  .bench-note{font-size:12px;color:var(--soft);margin:8px 0 0}
+
+  #msg{padding:14px 16px;border-left:3px solid var(--hold);background:#F6F2E6;margin:16px 0;
+    font-size:14px;color:var(--ink)}
+  #msg.bad{border-left-color:var(--live)}
+  #msg code{font-family:var(--mono);font-size:12px}
+  .empty{color:var(--soft);padding:26px 0;font-size:14px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>Sunday board</h1>
+  <div class="meta" id="meta">not loaded</div>
+</header>
+
+<div class="bar">
+  <button id="refresh" class="solid">Refresh</button>
+  <label class="auto"><input type="checkbox" id="auto" checked> refresh every minute</label>
+  <button id="expand">Expand all</button>
+</div>
+
+<div id="msg" hidden></div>
+<div id="paste" hidden>
+  <p style="font-size:14px;margin:0 0 8px">Paste the Rosters tab here instead. In the sheet: select
+  all (Ctrl+A), copy, then paste below. The board will score it straight away.</p>
+  <textarea id="pasteBox" rows="5" style="width:100%;font-family:var(--mono);font-size:11.5px;
+    border:1px solid var(--rule);border-radius:2px;padding:8px" placeholder="LEAGUE ID&#9;LEAGUE NAME&#9;TEAM NAME&#9;..."></textarea>
+  <div style="margin-top:8px"><button id="usePaste" class="solid">Use this roster</button></div>
+</div>
+<div id="board"><div class="empty">Loading your rosters&hellip;</div></div>
+
+<p class="bench-note">Rosters come from your master sheet, so lineup changes show up here on the next
+refresh. Opponent scores aren&rsquo;t in yet &mdash; this is your side of all ten matchups.</p>
+
+</div>
+<script>
+const DOC = "1cJy81PkUcrmj58-NshAE_f8Kj1vNLGNu_ePxWmyvngs";
+const GID = "1233809098";
+// Tried in order. The first two need the sheet shared "anyone with the link"; the third is the
+// published CSV, which the browser often refuses because of the domain it redirects to.
+const SOURCES = [
+  {why:"gviz", url:()=>`https://docs.google.com/spreadsheets/d/${DOC}/gviz/tq?tqx=out:csv&gid=${GID}&cb=${Date.now()}`},
+  {why:"export", url:()=>`https://docs.google.com/spreadsheets/d/${DOC}/export?format=csv&gid=${GID}&cb=${Date.now()}`},
+  {why:"published", url:()=>`https://docs.google.com/spreadsheets/d/e/2PACX-1vRi-N381C8kqHQjS-Ghp23jdMdSEj5NZcjh1LJrJsYGXKr5pWcR_II221Eud3xb_YA2zEXCkUPMMAAM/pub?gid=1233809098&single=true&output=csv&cb=${Date.now()}`}
+];
+let sourceUsed = "";
+const BASE = "https://site.api.espn.com/apis/site/v2/sports/football/nfl";
+
+/* ---------- scoring ---------- */
+const SYS_OF = t => t==="Aging Stars" ? "ESPN"
+  : t==="Firm of Bowers & Loveland" ? "RDW"
+  : t==="Warren and Peace" ? "Yahoo" : "FFPC";
+
+function ffpc(s,pos){
+  let p = s.passYd*0.05 + s.passTD*4 - s.int - s.fumLost
+        + s.rushYd*0.1 + s.rushTD*6
+        + s.recYd*0.1 + s.recTD*6 + s.rec*(pos==="TE"?1.5:1)
+        + s.twoPt*2 + s.returnTD*6 + s.xp;
+  for(const d of s.fgs) p += d<=30 ? 3 : 3+(d-30)*0.1;
+  if(s.isDef){
+    p += s.sacks + s.takeaways*2 + s.defTD*6;
+    const a=s.ptsAllowed;
+    p += a===0?12 : a<=6?8 : a<=13?5 : a<=19?3 : a<=23?1 : a<=29?0 : -2;
+  }
+  return p;
+}
+function yahoo(s){
+  let p = s.passYd*0.04 + (s.passYd>=300?3:0) + s.passTD*6 - s.int*2
+        + s.rushYd*0.1 + (s.rushYd>=150?3:0) + s.rushTD*6
+        + s.recYd*0.1 + (s.recYd>=150?3:0) + s.recTD*6 + s.rec
+        + s.twoPt*2 - s.fumLost*2 + s.returnTD*6 + s.xp;
+  for(const d of s.fgs) p += d>=50?5 : d>=40?4 : 3;
+  if(s.isDef){
+    p += s.sacks + s.takeaways*2 + s.defTD*6 + s.returnYd*0.01 + (s.returnYd>=150?2:0);
+    const a=s.ptsAllowed;
+    p += a===0?10 : a<=6?7 : a<=13?3 : a<=20?1 : a<=27?0 : a<=34?-1 : -4;
+  }else{
+    p += s.returnYd*0.01 + (s.returnYd>=100?2:0);
+  }
+  return p;
+}
+function espn(s){
+  const b = y => Math.trunc(y/10);            // whole 10-yard blocks only
+  let p = b(s.passYd)*0.2 + s.passTD*3
+        + b(s.rushYd)*0.5 + s.rushTD*6
+        + b(s.recYd)*0.5 + s.recTD*6
+        + s.twoPt*2 + s.returnTD*6 + s.xp + s.fgs.length*3;
+  if(s.isDef){
+    p += s.sacks + s.takeaways + s.defTD*6;
+    const a=s.ptsAllowed;
+    p += a===0?6 : a<=6?3 : 0;
+  }
+  return p;
+}
+function rdw(s,pos){
+  const rr = pos==="RB"?0.14:0.10, cr = pos==="RB"?0.25:1;
+  let p = s.passYd*0.05 + s.passTD*4 - s.int - s.fumLost
+        + s.rushYd*rr + s.rushTD*6
+        + s.recYd*0.1 + s.recTD*6 + s.rec*cr
+        + s.twoPt*2 + s.xp;
+  for(const d of s.fgs) p += d<=30 ? 3 : 3+(d-30)*0.1;
+  if(s.isDef){
+    p += s.sacks + s.takeaways*2 + s.defTD*6;
+    const a=s.ptsAllowed;
+    p += a===0?10 : a<=5?8 : a<=10?6 : a<=15?4 : a<=20?2 : 0;
+  }
+  return p;
+}
+const score = (sys,s,pos) => sys==="FFPC"?ffpc(s,pos) : sys==="Yahoo"?yahoo(s)
+  : sys==="ESPN"?espn(s) : rdw(s,pos);
+
+/* ---------- helpers ---------- */
+const blank = () => ({passYd:0,passTD:0,int:0,rushYd:0,rushTD:0,recYd:0,recTD:0,rec:0,
+  fumLost:0,twoPt:0,xp:0,fgs:[],returnYd:0,returnTD:0,
+  isDef:false,sacks:0,takeaways:0,defTD:0,ptsAllowed:0});
+const num = v => { const n=parseFloat(String(v).replace(/[^0-9.\-]/g,"")); return isNaN(n)?0:n; };
+const pair = v => String(v).split("/").map(num);
+const norm = n => n.toLowerCase().replace(/[^a-z ]/g,"").replace(/\b(jr|sr|ii|iii|iv|v)\b/g,"").trim();
+const TEAMFIX = {JAC:"JAX", WAS:"WSH", ARZ:"ARI", LA:"LAR"};
+const fixTeam = t => TEAMFIX[t] || t;
+
+function parseCSV(text){
+  const sep = (text.split("\n")[0].split("\t").length > 3) ? "\t" : ",";
+  const rows=[]; let row=[], cell="", q=false;
+  for(let i=0;i<text.length;i++){
+    const c=text[i];
+    if(q){ if(c==='"'){ if(text[i+1]==='"'){cell+='"';i++;} else q=false; } else cell+=c; }
+    else if(c==='"') q=true;
+    else if(c===sep){ row.push(cell); cell=""; }
+    else if(c==="\n"){ row.push(cell); rows.push(row); row=[]; cell=""; }
+    else if(c!=="\r") cell+=c;
+  }
+  if(cell||row.length){ row.push(cell); rows.push(row); }
+  const head = rows.shift().map(h=>h.trim().toUpperCase());
+  return rows.filter(r=>r.length>1).map(r=>{
+    const o={}; head.forEach((h,i)=>o[h]=(r[i]||"").trim()); return o;
+  });
+}
+
+function grab(cat,labels,stats,s){
+  const L = k => { const i=labels.findIndex(x=>x.toUpperCase()===k); return i<0?null:stats[i]; };
+  if(cat==="passing"){ s.passYd+=num(L("YDS")); s.passTD+=num(L("TD")); s.int+=num(L("INT")); }
+  else if(cat==="rushing"){ s.rushYd+=num(L("YDS")); s.rushTD+=num(L("TD")); }
+  else if(cat==="receiving"){ s.recYd+=num(L("YDS")); s.recTD+=num(L("TD")); s.rec+=num(L("REC")); }
+  else if(cat==="fumbles"){ s.fumLost+=num(L("LOST")); }
+  else if(cat==="kicking"){ const xp=L("XP"); if(xp!==null) s.xp+=pair(xp)[0]; }
+  else if(cat==="kickReturns"||cat==="puntReturns"){ s.returnYd+=num(L("YDS")); s.returnTD+=num(L("TD")); }
+}
+
+function parseGame(sum, store){
+  const comp = sum?.header?.competitions?.[0];
+  const sc = {};
+  for(const c of (comp?.competitors||[])) sc[c.team?.abbreviation] = num(c.score);
+  const teams = Object.keys(sc);
+
+  for(const tb of (sum?.boxscore?.players||[])){
+    const abbr = tb?.team?.abbreviation;
+    for(const cat of (tb.statistics||[])){
+      for(const a of (cat.athletes||[])){
+        const nm=a?.athlete?.displayName; if(!nm) continue;
+        const k=norm(nm);
+        if(!store.players.has(k)) store.players.set(k,{name:nm,team:abbr,s:blank()});
+        grab(cat.name, cat.labels||[], a.stats||[], store.players.get(k).s);
+      }
+    }
+  }
+  for(const sp of (sum?.scoringPlays||[])){
+    const m = (sp?.text||"").match(/^(.+?)\s+(\d+)\s*Yd Field Goal/i);
+    if(m){
+      const k=norm(m[1]);
+      if(!store.players.has(k)) store.players.set(k,{name:m[1],team:sp.team?.abbreviation,s:blank()});
+      store.players.get(k).s.fgs.push(parseInt(m[2],10));
+    }
+  }
+  const lost={}, per={};
+  for(const tb of (sum?.boxscore?.players||[])){
+    const abbr=tb?.team?.abbreviation; if(!abbr) continue;
+    const L=(lb,st,k)=>{const i=lb.findIndex(x=>x.toUpperCase()===k);return i<0?0:num(st[i]);};
+    let sacks=0,ints=0,defTD=0,retYd=0,fl=0;
+    for(const cat of (tb.statistics||[])) for(const a of (cat.athletes||[])){
+      const lb=cat.labels||[], st=a.stats||[];
+      if(cat.name==="defensive") sacks+=L(lb,st,"SACKS");
+      if(cat.name==="interceptions"){ ints+=L(lb,st,"INT"); defTD+=L(lb,st,"TD"); }
+      if(cat.name==="fumbles") fl+=L(lb,st,"LOST");
+      if(cat.name==="kickReturns"||cat.name==="puntReturns"){ defTD+=L(lb,st,"TD"); retYd+=L(lb,st,"YDS"); }
+    }
+    lost[abbr]=fl; per[abbr]={sacks,ints,defTD,retYd};
+  }
+  for(const abbr of Object.keys(per)){
+    const opp = teams.find(t=>t!==abbr), t=per[abbr];
+    const d=blank(); d.isDef=true; d.ptsAllowed=sc[opp]??0;
+    d.sacks=t.sacks; d.takeaways=t.ints+(lost[opp]||0); d.defTD=t.defTD; d.returnYd=t.retYd;
+    store.defs.set(abbr,{name:abbr+" D/ST",team:abbr,s:d});
+  }
+}
+
+/* ---------- render ---------- */
+const boardEl=document.getElementById("board"), metaEl=document.getElementById("meta"),
+      msgEl=document.getElementById("msg");
+let openTeams = new Set(), roster=null;
+
+function note(text, bad){
+  msgEl.hidden=false; msgEl.className = bad?"bad":""; msgEl.innerHTML=text;
+}
+
+let pastedCSV = null;
+
+function rowsToRoster(rows){
+  return rows.map(o=>({
+    team:o["TEAM NAME"], league:o["LEAGUE NAME"],
+    name: o.POSITION==="DF" ? fixTeam(o["NFL TEAM"])+" D/ST" : `${o["FIRST NAME"]} ${o["LAST NAME"]}`.trim(),
+    nfl: fixTeam(o["NFL TEAM"]), pos:o.POSITION, start:o["ROSTER STATUS"]==="Starter"
+  })).filter(p=>p.team);
+}
+
+async function loadRoster(){
+  if(pastedCSV){ sourceUsed = "pasted"; return rowsToRoster(parseCSV(pastedCSV)); }
+  const tried = [];
+  for(const s of SOURCES){
+    try{
+      const r = await fetch(s.url(), {cache:"no-store"});
+      if(!r.ok){ tried.push(`${s.why}: HTTP ${r.status}`); continue; }
+      const text = await r.text();
+      if(!/TEAM NAME/i.test(text)){ tried.push(`${s.why}: not the roster tab`); continue; }
+      sourceUsed = s.why;
+      return rowsToRoster(parseCSV(text));
+    }catch(err){ tried.push(`${s.why}: ${err.message}`); }
+  }
+  throw new Error(tried.join(" &middot; "));
+}
+
+async function refresh(){
+  const btn=document.getElementById("refresh"); btn.disabled=true;
+  try{
+    if(!roster) roster = await loadRoster();
+  }catch(err){
+    note(`Couldn't read the sheet. Tried &mdash; ${err.message}.<br><br>`+
+         `If every route was blocked, open the master, press Share, and set General access to `+
+         `<b>Anyone with the link &mdash; Viewer</b>. That's what the first two routes need. `+
+         `Otherwise paste the roster below and the board works normally.`, true);
+    document.getElementById("paste").hidden = false;
+    btn.disabled=false; return;
+  }
+
+  let sb;
+  try{ sb = await (await fetch(`${BASE}/scoreboard`,{cache:"no-store"})).json(); }
+  catch(err){ note("Couldn't reach the stat feed: "+err.message, true); btn.disabled=false; return; }
+
+  const week = sb.week?.number ?? "?";
+  const events = sb.events||[];
+  const gameOf = new Map();            // team -> {state, label}
+  const store = {players:new Map(), defs:new Map()};
+  let live=0, pending=[];
+
+  for(const e of events){
+    const comp=e.competitions?.[0], st=comp?.status?.type?.state;
+    const label=comp?.status?.type?.shortDetail||"";
+    for(const c of (comp?.competitors||[])) gameOf.set(c.team?.abbreviation,{state:st,label});
+    if(st==="in") live++;
+    if(st!=="pre") pending.push(e.id);
+  }
+  await Promise.all(pending.map(async id=>{
+    try{ parseGame(await (await fetch(`${BASE}/summary?event=${id}`,{cache:"no-store"})).json(), store); }
+    catch(err){}
+  }));
+
+  const find = p => p.pos==="DF" ? store.defs.get(p.nfl) : store.players.get(norm(p.name));
+
+  const teams = [...new Set(roster.map(r=>r.team))];
+  const cards = teams.map(t=>{
+    const sys=SYS_OF(t);
+    const mine=roster.filter(r=>r.team===t);
+    const starters=mine.filter(r=>r.start);
+    let total=0, yet=0, going=0, done=0;
+    const lines = starters.map(p=>{
+      const hit=find(p), g=gameOf.get(p.nfl);
+      const pts = hit ? score(sys,hit.s,p.pos==="DF"?"DF":p.pos) : 0;
+      total += pts;
+      const state = !g ? "bye" : g.state==="pre" ? "pre" : g.state==="in" ? "in" : "post";
+      if(state==="pre") yet++; else if(state==="in") going++; else if(state==="post") done++;
+      return {p, pts, state, label: g?g.label:"bye"};
+    }).sort((a,b)=>b.pts-a.pts);
+    return {team:t, league:mine[0].league, sys, total, yet, going, done, lines,
+            n:starters.length};
+  }).sort((a,b)=> b.going-a.going || b.total-a.total);
+
+  boardEl.innerHTML = cards.map(c=>`
+    <div class="team${openTeams.has(c.team)?" open":""}" data-team="${c.team}">
+      <div class="row">
+        <div class="name">
+          <span class="dot ${c.going?"live":(c.yet?"":"done")}"></span>
+          <span>${c.team}<span class="league">${c.league}</span></span>
+        </div>
+        <div class="prog">${c.going?c.going+" playing<br>":""}${c.yet} of ${c.n} to play</div>
+        <div class="score">${c.total.toFixed(2)}</div>
+      </div>
+      <div class="detail">
+        <table>
+          <thead><tr><th>Starter</th><th>Pos</th><th>Game</th><th style="text-align:right">Pts</th></tr></thead>
+          <tbody>${c.lines.map(l=>`
+            <tr class="${l.state==="pre"?"yet":l.state==="in"?"playing":""}">
+              <td>${l.p.name}</td><td class="n">${l.p.pos}</td>
+              <td class="n">${l.label}</td><td class="p">${l.pts.toFixed(2)}</td>
+            </tr>`).join("")}
+          </tbody>
+        </table>
+      </div>
+    </div>`).join("");
+
+  boardEl.querySelectorAll(".row").forEach(r=>r.addEventListener("click",()=>{
+    const el=r.parentElement, t=el.dataset.team;
+    el.classList.toggle("open");
+    el.classList.contains("open") ? openTeams.add(t) : openTeams.delete(t);
+  }));
+
+  metaEl.innerHTML = `week ${week} &middot; ${live} game${live===1?"":"s"} in progress<br>`+
+    `updated ${new Date().toLocaleTimeString()} &middot; roster via ${sourceUsed}`;
+  msgEl.hidden = true;
+  btn.disabled=false;
+}
+
+document.getElementById("refresh").addEventListener("click", ()=>{ roster=null; refresh(); });
+// note: a pasted roster is kept until you paste a new one
+document.getElementById("expand").addEventListener("click", e=>{
+  const all = boardEl.querySelectorAll(".team");
+  const opening = openTeams.size < all.length;
+  openTeams = new Set(opening ? [...all].map(t=>t.dataset.team) : []);
+  all.forEach(t=>t.classList.toggle("open", opening));
+  e.target.textContent = opening ? "Collapse all" : "Expand all";
+});
+document.getElementById("usePaste").addEventListener("click", ()=>{
+  const v = document.getElementById("pasteBox").value.trim();
+  if(!v) return;
+  pastedCSV = v; roster = null;
+  document.getElementById("paste").hidden = true;
+  refresh();
+});
+let timer=setInterval(()=>{ if(document.getElementById("auto").checked) refresh(); },60000);
+refresh();
+</script>
+</body>
+</html>
