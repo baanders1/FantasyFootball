@@ -27,17 +27,27 @@
   label.auto{font-size:13.5px;color:var(--soft);display:flex;gap:6px;align-items:center;cursor:pointer}
 
   .team{border-bottom:1px solid var(--rule)}
-  .row{display:grid;grid-template-columns:1fr auto auto;gap:14px;align-items:center;
+  .row{display:grid;grid-template-columns:1fr auto auto auto;gap:14px;align-items:center;
     padding:11px 2px;cursor:pointer}
   .row:hover{background:#F4F3ED}
   .name{font-weight:600;font-size:16px;display:flex;align-items:center;gap:8px}
   .league{display:block;font-weight:400;font-size:12px;color:var(--soft);margin-top:1px}
   .prog{font-family:var(--mono);font-size:11.5px;color:var(--soft);text-align:right;white-space:nowrap}
-  .score{font-family:var(--mono);font-size:22px;font-weight:600;min-width:84px;text-align:right}
+  .score{font-family:var(--mono);font-size:21px;font-weight:600;min-width:74px;text-align:right}
   .dot{width:7px;height:7px;border-radius:50%;background:var(--rule);flex:none}
   .dot.live{background:var(--live)}
   .dot.done{background:var(--field)}
 
+  .scores{display:flex;align-items:baseline;gap:7px;justify-content:flex-end}
+  .vs{font-size:11px;color:var(--soft)}
+  .score.them{color:var(--soft)}
+  .margin{font-family:var(--mono);font-size:13px;min-width:62px;text-align:right;color:var(--soft)}
+  .margin.up{color:var(--field);font-weight:600}
+  .margin.down{color:var(--live);font-weight:600}
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+  @media (max-width:640px){ .cols{grid-template-columns:1fr} }
+  .who{font-size:11px;font-weight:600;color:var(--soft);text-transform:uppercase;
+    letter-spacing:.06em;padding-bottom:3px;border-bottom:1px solid var(--ink);margin-bottom:2px}
   .detail{display:none;padding:2px 2px 16px}
   .team.open .detail{display:block}
   table{width:100%;border-collapse:collapse;font-size:13.5px}
@@ -81,13 +91,14 @@
 </div>
 <div id="board"><div class="empty">Loading your rosters&hellip;</div></div>
 
-<p class="bench-note">Rosters come from your master sheet, so lineup changes show up here on the next
-refresh. Opponent scores aren&rsquo;t in yet &mdash; this is your side of all ten matchups.</p>
+<p class="bench-note">Both sides come from your master sheet &mdash; your lineups from Rosters, theirs from
+Opponents. Closest live matchups sort to the top. Teams with no opponent entered show your side only.</p>
 
 </div>
 <script>
 const DOC = "1cJy81PkUcrmj58-NshAE_f8Kj1vNLGNu_ePxWmyvngs";
-const GID = "1233809098";
+const GID = "1233809098";          // Rosters tab
+const OPP_GID = "432739575";       // Opponents tab
 // Tried in order. The first two need the sheet shared "anyone with the link"; the third is the
 // published CSV, which the browser often refuses because of the domain it redirects to.
 const SOURCES = [
@@ -96,6 +107,10 @@ const SOURCES = [
   {why:"published", url:()=>`https://docs.google.com/spreadsheets/d/e/2PACX-1vRi-N381C8kqHQjS-Ghp23jdMdSEj5NZcjh1LJrJsYGXKr5pWcR_II221Eud3xb_YA2zEXCkUPMMAAM/pub?gid=1233809098&single=true&output=csv&cb=${Date.now()}`}
 ];
 let sourceUsed = "";
+const OPP_SOURCES = [
+  ()=>`https://docs.google.com/spreadsheets/d/${DOC}/gviz/tq?tqx=out:csv&gid=${OPP_GID}&cb=${Date.now()}`,
+  ()=>`https://docs.google.com/spreadsheets/d/${DOC}/export?format=csv&gid=${OPP_GID}&cb=${Date.now()}`
+];
 const BASE = "https://site.api.espn.com/apis/site/v2/sports/football/nfl";
 
 /* ---------- scoring ---------- */
@@ -265,6 +280,23 @@ function rowsToRoster(rows){
   })).filter(p=>p.team);
 }
 
+async function loadOpponents(){
+  for(const u of OPP_SOURCES){
+    try{
+      const r = await fetch(u(), {cache:"no-store"});
+      if(!r.ok) continue;
+      const text = await r.text();
+      if(!/MY TEAM/i.test(text)) continue;
+      return parseCSV(text).map(o=>({
+        team:o["MY TEAM"],
+        name: o.POSITION==="DF" ? fixTeam(o["NFL TEAM"])+" D/ST" : `${o["FIRST NAME"]} ${o["LAST NAME"]}`.trim(),
+        nfl: fixTeam(o["NFL TEAM"]), pos:o.POSITION
+      })).filter(p=>p.team && p.pos);
+    }catch(err){}
+  }
+  return null;                      // no opponents tab yet — that's fine
+}
+
 async function loadRoster(){
   if(pastedCSV){ sourceUsed = "pasted"; return rowsToRoster(parseCSV(pastedCSV)); }
   const tried = [];
@@ -294,6 +326,8 @@ async function refresh(){
     btn.disabled=false; return;
   }
 
+  const opps = await loadOpponents();
+
   let sb;
   try{ sb = await (await fetch(`${BASE}/scoreboard`,{cache:"no-store"})).json(); }
   catch(err){ note("Couldn't reach the stat feed: "+err.message, true); btn.disabled=false; return; }
@@ -318,46 +352,76 @@ async function refresh(){
 
   const find = p => p.pos==="DF" ? store.defs.get(p.nfl) : store.players.get(norm(p.name));
 
-  const teams = [...new Set(roster.map(r=>r.team))];
-  const cards = teams.map(t=>{
-    const sys=SYS_OF(t);
-    const mine=roster.filter(r=>r.team===t);
-    const starters=mine.filter(r=>r.start);
-    let total=0, yet=0, going=0, done=0;
-    const lines = starters.map(p=>{
+  function sideOf(list, sys){
+    let total=0, yet=0, going=0;
+    const lines = list.map(p=>{
       const hit=find(p), g=gameOf.get(p.nfl);
       const pts = hit ? score(sys,hit.s,p.pos==="DF"?"DF":p.pos) : 0;
       total += pts;
       const state = !g ? "bye" : g.state==="pre" ? "pre" : g.state==="in" ? "in" : "post";
-      if(state==="pre") yet++; else if(state==="in") going++; else if(state==="post") done++;
+      if(state==="pre") yet++; else if(state==="in") going++;
       return {p, pts, state, label: g?g.label:"bye"};
     }).sort((a,b)=>b.pts-a.pts);
-    return {team:t, league:mine[0].league, sys, total, yet, going, done, lines,
-            n:starters.length};
-  }).sort((a,b)=> b.going-a.going || b.total-a.total);
+    return {total, yet, going, lines, n:list.length};
+  }
 
-  boardEl.innerHTML = cards.map(c=>`
+  const teams = [...new Set(roster.map(r=>r.team))];
+  const cards = teams.map(t=>{
+    const sys=SYS_OF(t);
+    const mine=roster.filter(r=>r.team===t);
+    const me = sideOf(mine.filter(r=>r.start), sys);
+    const oppList = opps ? opps.filter(o=>o.team===t) : [];
+    const them = oppList.length ? sideOf(oppList, sys) : null;
+    return {team:t, league:mine[0].league, sys, me, them,
+            margin: them ? me.total-them.total : null,
+            going: me.going + (them?them.going:0)};
+  }).sort((a,b)=>{
+    // closest live matchups first, then live, then by margin
+    const aL = a.going>0, bL = b.going>0;
+    if(aL!==bL) return bL-aL;
+    if(a.margin!==null && b.margin!==null) return Math.abs(a.margin)-Math.abs(b.margin);
+    return b.me.total-a.me.total;
+  });
+
+  const sideTable = (side, who) => `
+    <div class="col">
+      <div class="who">${who}</div>
+      <table><tbody>${side.lines.map(l=>`
+        <tr class="${l.state==="pre"?"yet":l.state==="in"?"playing":""}">
+          <td>${l.p.name}</td><td class="n">${l.p.pos}</td>
+          <td class="n">${l.label}</td><td class="p">${l.pts.toFixed(2)}</td>
+        </tr>`).join("")}</tbody></table>
+    </div>`;
+
+  boardEl.innerHTML = cards.map(c=>{
+    const lead = c.margin===null ? "" :
+      c.margin>0 ? "up" : c.margin<0 ? "down" : "tied";
+    const marginTxt = c.margin===null ? "&mdash;"
+      : (c.margin>0?"+":"") + c.margin.toFixed(2);
+    return `
     <div class="team${openTeams.has(c.team)?" open":""}" data-team="${c.team}">
       <div class="row">
         <div class="name">
-          <span class="dot ${c.going?"live":(c.yet?"":"done")}"></span>
+          <span class="dot ${c.going?"live":(c.me.yet?"":"done")}"></span>
           <span>${c.team}<span class="league">${c.league}</span></span>
         </div>
-        <div class="prog">${c.going?c.going+" playing<br>":""}${c.yet} of ${c.n} to play</div>
-        <div class="score">${c.total.toFixed(2)}</div>
+        <div class="prog">${c.going?c.going+" playing<br>":""}${c.me.yet} of ${c.me.n} to play${
+          c.them?` &middot; they have ${c.them.yet}`:""}</div>
+        <div class="scores">
+          <span class="score">${c.me.total.toFixed(2)}</span>
+          <span class="vs">${c.them?"vs":""}</span>
+          <span class="score them">${c.them?c.them.total.toFixed(2):"&mdash;"}</span>
+        </div>
+        <div class="margin ${lead}">${marginTxt}</div>
       </div>
       <div class="detail">
-        <table>
-          <thead><tr><th>Starter</th><th>Pos</th><th>Game</th><th style="text-align:right">Pts</th></tr></thead>
-          <tbody>${c.lines.map(l=>`
-            <tr class="${l.state==="pre"?"yet":l.state==="in"?"playing":""}">
-              <td>${l.p.name}</td><td class="n">${l.p.pos}</td>
-              <td class="n">${l.label}</td><td class="p">${l.pts.toFixed(2)}</td>
-            </tr>`).join("")}
-          </tbody>
-        </table>
+        ${c.them
+          ? `<div class="cols">${sideTable(c.me,"You")}${sideTable(c.them,"Opponent")}</div>`
+          : `<div class="cols">${sideTable(c.me,"You")}</div>
+             <p class="bench-note">No opponent entered for this team yet.</p>`}
       </div>
-    </div>`).join("");
+    </div>`;
+  }).join("");
 
   boardEl.querySelectorAll(".row").forEach(r=>r.addEventListener("click",()=>{
     const el=r.parentElement, t=el.dataset.team;
