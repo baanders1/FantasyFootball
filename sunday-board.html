@@ -91,6 +91,9 @@
 </div>
 <div id="board"><div class="empty">Loading your rosters&hellip;</div></div>
 
+<p class="bench-note" style="border-left:3px solid #B8860B;background:#F6F2E6;padding:10px 12px">
+Known gap: a defense that blocks a kick or records a safety reads low, since neither appears in the
+box score. Costs 2 points in FFPC for a block, 5 for a safety.</p>
 <p class="bench-note">Both sides come from your master sheet &mdash; your lineups from Rosters, theirs from
 Opponents. Closest live matchups sort to the top. Teams with no opponent entered show your side only.</p>
 
@@ -122,7 +125,7 @@ function ffpc(s,pos){
   let p = s.passYd*0.05 + s.passTD*4 - s.int - s.fumLost
         + s.rushYd*0.1 + s.rushTD*6
         + s.recYd*0.1 + s.recTD*6 + s.rec*(pos==="TE"?1.5:1)
-        + s.twoPt*2 + s.returnTD*6 + s.xp;
+        + s.twoPt*2 + s.twoPtPass*2 + s.returnTD*6 + s.xp;
   for(const d of s.fgs) p += d<=30 ? 3 : 3+(d-30)*0.1;
   if(s.isDef){
     p += s.sacks + s.takeaways*2 + s.defTD*6;
@@ -135,7 +138,7 @@ function yahoo(s){
   let p = s.passYd*0.04 + (s.passYd>=300?3:0) + s.passTD*6 - s.int*2
         + s.rushYd*0.1 + (s.rushYd>=150?3:0) + s.rushTD*6
         + s.recYd*0.1 + (s.recYd>=150?3:0) + s.recTD*6 + s.rec
-        + s.twoPt*2 - s.fumLost*2 + s.returnTD*6 + s.xp;
+        + s.twoPt*2 - s.fumLost*2 + s.returnTD*6 + s.xp;   // Yahoo scores the scorer only
   for(const d of s.fgs) p += d>=50?5 : d>=40?4 : 3;
   if(s.isDef){
     p += s.sacks + s.takeaways*2 + s.defTD*6 + s.returnYd*0.01 + (s.returnYd>=150?2:0);
@@ -151,7 +154,7 @@ function espn(s){
   let p = b(s.passYd)*0.2 + s.passTD*3
         + b(s.rushYd)*0.5 + s.rushTD*6
         + b(s.recYd)*0.5 + s.recTD*6
-        + s.twoPt*2 + s.returnTD*6 + s.xp + s.fgs.length*3;
+        + s.twoPt*2 + s.twoPtPass*1 + s.returnTD*6 + s.xp + s.fgs.length*3;
   if(s.isDef){
     p += s.sacks + s.takeaways + s.defTD*6;
     const a=s.ptsAllowed;
@@ -164,7 +167,7 @@ function rdw(s,pos){
   let p = s.passYd*0.05 + s.passTD*4 - s.int - s.fumLost
         + s.rushYd*rr + s.rushTD*6
         + s.recYd*0.1 + s.recTD*6 + s.rec*cr
-        + s.twoPt*2 + s.xp;
+        + s.twoPt*2 + s.twoPtPass*2 + s.xp;
   for(const d of s.fgs) p += d<=30 ? 3 : 3+(d-30)*0.1;
   if(s.isDef){
     p += s.sacks + s.takeaways*2 + s.defTD*6;
@@ -178,7 +181,7 @@ const score = (sys,s,pos) => sys==="FFPC"?ffpc(s,pos) : sys==="Yahoo"?yahoo(s)
 
 /* ---------- helpers ---------- */
 const blank = () => ({passYd:0,passTD:0,int:0,rushYd:0,rushTD:0,recYd:0,recTD:0,rec:0,
-  fumLost:0,twoPt:0,xp:0,fgs:[],returnYd:0,returnTD:0,
+  fumLost:0,twoPt:0,twoPtPass:0,xp:0,fgs:[],returnYd:0,returnTD:0,
   isDef:false,sacks:0,takeaways:0,defTD:0,ptsAllowed:0});
 const num = v => { const n=parseFloat(String(v).replace(/[^0-9.\-]/g,"")); return isNaN(n)?0:n; };
 const pair = v => String(v).split("/").map(num);
@@ -231,13 +234,20 @@ function parseGame(sum, store){
       }
     }
   }
+  const ensure = (nm, abbr) => {
+    const k = norm(nm);
+    if(!store.players.has(k)) store.players.set(k,{name:nm, team:abbr, s:blank()});
+    return store.players.get(k).s;
+  };
   for(const sp of (sum?.scoringPlays||[])){
-    const m = (sp?.text||"").match(/^(.+?)\s+(\d+)\s*Yd Field Goal/i);
-    if(m){
-      const k=norm(m[1]);
-      if(!store.players.has(k)) store.players.set(k,{name:m[1],team:sp.team?.abbreviation,s:blank()});
-      store.players.get(k).s.fgs.push(parseInt(m[2],10));
-    }
+    const txt = sp?.text || "", abbr = sp.team?.abbreviation;
+    const m = txt.match(/^(.+?)\s+(\d+)\s*Yd Field Goal/i);
+    if(m) ensure(m[1], abbr).fgs.push(parseInt(m[2],10));
+    // e.g. "(Carson Wentz Pass to Justin Jefferson for Two-Point Conversion)"
+    const tp = txt.match(/\(([^)]+?)\s+Pass to\s+([^)]+?)\s+for Two-Point Conversion\)/i);
+    if(tp){ ensure(tp[2], abbr).twoPt++; ensure(tp[1], abbr).twoPtPass++; }
+    const tr = txt.match(/\(([^)]+?)\s+Run for Two-Point Conversion\)/i);
+    if(tr) ensure(tr[1], abbr).twoPt++;
   }
   const lost={}, per={};
   for(const tb of (sum?.boxscore?.players||[])){
@@ -405,8 +415,10 @@ async function refresh(){
           <span class="dot ${c.going?"live":(c.me.yet?"":"done")}"></span>
           <span>${c.team}<span class="league">${c.league}</span></span>
         </div>
-        <div class="prog">${c.going?c.going+" playing<br>":""}${c.me.yet} of ${c.me.n} to play${
-          c.them?` &middot; they have ${c.them.yet}`:""}</div>
+        <div class="prog">${
+          c.going===0 ? "none playing"
+          : c.them ? `${c.me.going} vs ${c.them.going} playing`
+          : `${c.me.going} playing`}</div>
         <div class="scores">
           <span class="score">${c.me.total.toFixed(2)}</span>
           <span class="vs">${c.them?"vs":""}</span>
