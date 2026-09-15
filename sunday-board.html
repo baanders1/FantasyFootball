@@ -32,7 +32,8 @@
   .row:hover{background:#F4F3ED}
   .name{font-weight:600;font-size:16px;display:flex;align-items:center;gap:8px}
   .league{display:block;font-weight:400;font-size:12px;color:var(--soft);margin-top:1px}
-  .prog{font-family:var(--mono);font-size:11.5px;color:var(--soft);text-align:right;white-space:nowrap}
+  .prog{font-family:var(--mono);font-size:11.5px;color:var(--soft);text-align:right;white-space:nowrap;line-height:1.7}
+  .prog .left{opacity:.72}
   .score{font-family:var(--mono);font-size:21px;font-weight:600;min-width:74px;text-align:right}
   .dot{width:7px;height:7px;border-radius:50%;background:var(--rule);flex:none}
   .dot.live{background:var(--live)}
@@ -418,7 +419,9 @@ async function refresh(){
         <div class="prog">${
           c.going===0 ? "none playing"
           : c.them ? `${c.me.going} vs ${c.them.going} playing`
-          : `${c.me.going} playing`}</div>
+          : `${c.me.going} playing`}<br><span class="left">${
+          c.them ? `${c.me.yet} vs ${c.them.yet} left to play`
+          : `${c.me.yet} left to play`}</span></div>
         <div class="scores">
           <span class="score">${c.me.total.toFixed(2)}</span>
           <span class="vs">${c.them?"vs":""}</span>
