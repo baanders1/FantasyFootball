@@ -216,8 +216,8 @@
 <p class="note gap">A defense that blocks a kick or records a safety reads low here, since neither
 shows up in the box score. That is 2 points in the FFPC leagues for a block, 5 for a safety.</p>
 <p class="note">Both lineups come from the Lineups tab of your master sheet, filled by the grabbers.
-The closest live matchups sort to the top, and any team you haven&rsquo;t grabbed yet sits at the bottom
-marked &ldquo;not grabbed&rdquo;. Flex slots that arrive without a position are looked up automatically.</p>
+Teams stay in a fixed order, and any you haven&rsquo;t grabbed yet shows as
+&ldquo;not grabbed&rdquo; in place. Flex slots that arrive without a position are looked up automatically.</p>
 </div>
 <div id="notesWatch" hidden>
 <p class="note">Green is how many of your lineups start the player, red how many of your opponents do.
@@ -240,18 +240,18 @@ let sourceUsed = "";
 const BASE = "https://site.api.espn.com/apis/site/v2/sports/football/nfl";
 
 /* ---------- scoring ---------- */
-// Your ten teams. Changes once a season, not weekly.
+// Your ten teams, in the order the Scores tab shows them. Changes once a season.
 const TEAMS = [
+  {team:"Aging Stars",               sys:"ESPN",  league:"Hewitt"},
+  {team:"Warren and Peace",          sys:"Yahoo", league:"No Drama"},
+  {team:"Firm of Bowers & Loveland", sys:"RDW",   league:"RDW League"},
   {team:"NCBlackBears1", sys:"FFPC",  league:"FFPC1"},
   {team:"NCBlackBears2", sys:"FFPC",  league:"FFPC2"},
   {team:"NCBlackBears3", sys:"FFPC",  league:"FFPC3"},
   {team:"NCBlackBears4", sys:"FFPC",  league:"FFPC4"},
   {team:"NCBlackBears5", sys:"FFPC",  league:"FFPC5"},
   {team:"NCBlackBears6", sys:"FFPC",  league:"FFPC6"},
-  {team:"NCBlackBears7", sys:"FFPC",  league:"FFPC7"},
-  {team:"Aging Stars",               sys:"ESPN",  league:"Hewitt"},
-  {team:"Firm of Bowers & Loveland", sys:"RDW",   league:"RDW League"},
-  {team:"Warren and Peace",          sys:"Yahoo", league:"No Drama"}
+  {team:"NCBlackBears7", sys:"FFPC",  league:"FFPC7"}
 ];
 const CFG = new Map(TEAMS.map(t=>[t.team,t]));
 const SYS_OF = t => (CFG.get(t)||{}).sys || "FFPC";
@@ -569,14 +569,7 @@ async function refresh(){
     return {team:t, league:cfg.league, sys, me, them, oppName,
             margin: (me&&them) ? me.total-them.total : null,
             going: (me?me.going:0) + (them?them.going:0)};
-  }).sort((a,b)=>{
-    // closest live matchups first, then live, then by margin
-    if(!a.me !== !b.me) return a.me ? -1 : 1;          // missing lineups last
-    const aL = a.going>0, bL = b.going>0;
-    if(aL!==bL) return bL-aL;
-    if(a.margin!==null && b.margin!==null) return Math.abs(a.margin)-Math.abs(b.margin);
-    return (b.me?b.me.total:0)-(a.me?a.me.total:0);
-  });
+  });                       // shown in TEAMS order, not re-sorted
 
   const sideTable = (side, who) => `
     <div class="col">
