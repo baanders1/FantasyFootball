@@ -58,6 +58,8 @@
     padding:13px 15px;cursor:pointer}
   @media (max-width:620px){
     h1{font-size:30px}
+    .tabs{gap:18px}
+    .tab{font-size:17px}
     .row{grid-template-columns:1fr auto;gap:7px 12px;padding:12px}
     .name{grid-row:1;grid-column:1/-1}
     .scores{grid-row:2;grid-column:1;gap:7px}
@@ -114,14 +116,18 @@
   tr.playing td.n{color:var(--amber)}
   tr.playing td.p{color:var(--amber)}
 
+  /* ---- tabs ---- */
+  .tabs{display:flex;gap:26px;border-bottom:1px solid var(--line);margin-top:14px}
+  .tab{font-family:var(--cond);font-weight:600;font-size:19px;letter-spacing:.005em;
+    padding:9px 1px;border:0;border-bottom:3px solid transparent;border-radius:0;
+    background:none;color:var(--mute);cursor:pointer;margin-bottom:-1px}
+  .tab:hover{color:var(--chalk)}
+  .tab.on{color:var(--chalk);border-bottom-color:var(--amber)}
+  .tab:focus-visible{outline:2px solid var(--amber);outline-offset:3px}
+
   /* ---- players to watch ---- */
-  .watch-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:18px 0 2px}
-  .watch-btn{font-family:var(--cond);font-weight:600;font-size:22px;padding:0;border:0;
-    background:none;color:var(--chalk);cursor:pointer}
-  .watch-btn::before{content:"\2212\00a0";color:var(--mute)}
-  .watch-btn.closed::before{content:"+\00a0"}
-  .watch-btn:hover{color:var(--amber)}
-  .watch-btn:focus-visible{outline:2px solid var(--amber);outline-offset:3px}
+  .watch-bar{display:flex;align-items:center;gap:9px;flex-wrap:wrap;padding:14px 0 2px}
+  .watch-lead{font-size:13.5px;color:var(--mute)}
   .thresh{display:flex;gap:5px}
   .tbtn{font:500 12px/1 var(--body);padding:5px 9px;border:1px solid var(--line);
     background:transparent;color:var(--mute);border-radius:3px;cursor:pointer}
@@ -170,6 +176,11 @@
   <div class="meta" id="meta">not loaded</div>
 </header>
 
+<nav class="tabs" role="tablist">
+  <button class="tab on" id="tabScores" role="tab" aria-selected="true">Scores</button>
+  <button class="tab" id="tabWatch" role="tab" aria-selected="false">Players to watch</button>
+</nav>
+
 <div class="bar">
   <button id="refresh" class="solid">Refresh</button>
   <label class="auto"><input type="checkbox" id="auto" checked> refresh every minute</label>
@@ -184,19 +195,30 @@
     border:1px solid var(--rule);border-radius:2px;padding:8px" placeholder="LEAGUE ID&#9;LEAGUE NAME&#9;TEAM NAME&#9;..."></textarea>
   <div style="margin-top:8px"><button id="usePaste" class="solid">Use this roster</button></div>
 </div>
-<div id="watchWrap" hidden>
-  <div class="watch-bar">
-    <button id="watchToggle" class="watch-btn">Players to watch</button>
-    <span class="thresh" id="thresh"></span>
-  </div>
-  <div id="watch"></div>
+<div id="paneScores">
+  <div id="board"><div class="empty">Loading your rosters&hellip;</div></div>
 </div>
-<div id="board"><div class="empty">Loading your rosters&hellip;</div></div>
 
+<div id="paneWatch" hidden>
+  <div class="watch-bar">
+    <span class="watch-lead">Starters appearing in</span>
+    <span class="thresh" id="thresh"></span>
+    <span class="watch-lead">of your lineups</span>
+  </div>
+  <div id="watch"><div class="empty">Loading&hellip;</div></div>
+</div>
+
+<div id="notesScores">
 <p class="note gap">A defense that blocks a kick or records a safety reads low here, since neither
 shows up in the box score. That is 2 points in the FFPC leagues for a block, 5 for a safety.</p>
 <p class="note">Lineups come from your master sheet, yours from Rosters and theirs from Opponents.
 The closest live matchups sort to the top. Teams with no opponent entered yet show your side alone.</p>
+</div>
+<div id="notesWatch" hidden>
+<p class="note">Green is how many of your lineups start the player, red how many of your opponents do.
+A player split evenly scores for you and against you, so he cancels out. Games sort by how much they
+swing your Sunday.</p>
+</div>
 
 </div>
 <script>
@@ -570,13 +592,11 @@ document.getElementById("usePaste").addEventListener("click", ()=>{
   refresh();
 });
 let minAppear = 3;
-let watchOpen = true;
 let lastWatch = null;
 
 function renderWatch(roster, opps, gameOf){
   lastWatch = {roster, opps, gameOf};
-  const wrap=document.getElementById("watchWrap"), el=document.getElementById("watch");
-  wrap.hidden = false;
+  const el=document.getElementById("watch");
 
   // one entry per player, counting starting spots only
   const tally=new Map();
@@ -627,15 +647,23 @@ function renderWatch(roster, opps, gameOf){
           .map(p=>`<span class="pl"><span class="pn">${p.name}</span><span class="pp">${p.pos}</span><span class="pc"><em class="for">${p.mine}</em><i>/</i><em class="ag">${p.against}</em></span></span>`).join("")}</div>
       </div>`).join("");
   }
-  el.style.display = watchOpen ? "" : "none";
-  document.getElementById("watchToggle").classList.toggle("closed", !watchOpen);
 }
 
-document.getElementById("watchToggle").addEventListener("click",()=>{
-  watchOpen=!watchOpen;
-  document.getElementById("watch").style.display = watchOpen ? "" : "none";
-  document.getElementById("watchToggle").classList.toggle("closed", !watchOpen);
-});
+function showTab(which){
+  const scores = which === "scores";
+  document.getElementById("paneScores").hidden = !scores;
+  document.getElementById("paneWatch").hidden  =  scores;
+  document.getElementById("notesScores").hidden = !scores;
+  document.getElementById("notesWatch").hidden  =  scores;
+  for(const [id,on] of [["tabScores",scores],["tabWatch",!scores]]){
+    const b=document.getElementById(id);
+    b.classList.toggle("on", on);
+    b.setAttribute("aria-selected", on ? "true" : "false");
+  }
+  document.getElementById("expand").style.display = scores ? "" : "none";
+}
+document.getElementById("tabScores").addEventListener("click",()=>showTab("scores"));
+document.getElementById("tabWatch").addEventListener("click",()=>showTab("watch"));
 
 let timer=setInterval(()=>{ if(document.getElementById("auto").checked) refresh(); },60000);
 refresh();
