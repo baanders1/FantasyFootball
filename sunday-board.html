@@ -320,9 +320,27 @@ const blank = () => ({passYd:0,passTD:0,int:0,rushYd:0,rushTD:0,recYd:0,recTD:0,
   isDef:false,sacks:0,takeaways:0,defTD:0,ptsAllowed:0});
 const num = v => { const n=parseFloat(String(v).replace(/[^0-9.\-]/g,"")); return isNaN(n)?0:n; };
 const pair = v => String(v).split("/").map(num);
-const norm = n => n.toLowerCase().replace(/[^a-z ]/g,"").replace(/\b(jr|sr|ii|iii|iv|v)\b/g,"").trim();
+// ESPN sometimes glues an injury tag onto the name ("Joe BurrowQ"), so drop it before matching.
+const stripStatus = n => n.replace(/([a-z])(Q|O|D|P|IR|PUP|SUSP|NA|DTD)$/, "$1");
+const norm = n => stripStatus(String(n).trim())
+  .toLowerCase().replace(/[^a-z ]/g,"").replace(/\b(jr|sr|ii|iii|iv|v)\b/g,"").trim();
+
+const NFL = new Set(["ARI","ATL","BAL","BUF","CAR","CHI","CIN","CLE","DAL","DEN","DET","GB","HOU",
+  "IND","JAX","KC","LAC","LAR","LV","MIA","MIN","NE","NO","NYG","NYJ","PHI","PIT","SEA","SF","TB",
+  "TEN","WSH"]);
 const TEAMFIX = {JAC:"JAX", WAS:"WSH", ARZ:"ARI", LA:"LAR"};
-const fixTeam = t => TEAMFIX[t] || t;
+function fixTeam(t){
+  t = String(t||"").trim().toUpperCase();
+  if(TEAMFIX[t]) return TEAMFIX[t];
+  if(NFL.has(t)) return t;
+  // repair a mangled code like "TTB" by falling back to its last two or three letters
+  for(const n of [3,2]){
+    const tail=t.slice(-n);
+    if(NFL.has(tail)) return tail;
+    if(TEAMFIX[tail]) return TEAMFIX[tail];
+  }
+  return t;
+}
 
 function parseCSV(text){
   const sep = (text.split("\n")[0].split("\t").length > 3) ? "\t" : ",";
@@ -464,7 +482,8 @@ function rowsToLineups(rows){
       team:(o["MY TEAM"]||"").trim(),
       mine: !/^(opp|them|their)/.test(side),   // anything not marked opponent is yours
       who:(kOpp ? o[kOpp] : "").trim(),
-      name: pos==="DF" ? nfl+" D/ST" : `${o["FIRST NAME"]||""} ${o["LAST NAME"]||""}`.trim(),
+      name: pos==="DF" ? nfl+" D/ST"
+            : stripStatus(`${o["FIRST NAME"]||""} ${o["LAST NAME"]||""}`.trim()),
       nfl, pos
     };
   }).filter(p=>p.team && p.name);
@@ -524,6 +543,7 @@ async function refresh(){
 
   const find = p => p.pos==="DF" ? store.defs.get(p.nfl) : store.players.get(norm(p.name));
 
+  try{
   function sideOf(list, sys){
     let total=0, yet=0, going=0;
     const lines = list.map(p=>{
@@ -577,7 +597,7 @@ async function refresh(){
     <div class="team${openTeams.has(c.team)?" open":""}${!c.me?" is-blank":c.going?" is-live":(c.me.yet?"":" is-final")}" data-team="${c.team}">
       <div class="row">
         <div class="name">
-          <span class="t"><span class="dot ${c.going?"live":(c.me.yet?"":"done")}"></span>${c.team}</span>
+          <span class="t"><span class="dot ${!c.me?"":c.going?"live":(c.me.yet?"":"done")}"></span>${c.team}</span>
           <span class="league">${c.league}</span>
         </div>
         <div class="prog">${!c.me ? "not grabbed" : (
@@ -615,6 +635,10 @@ async function refresh(){
   metaEl.innerHTML = `<b>Week ${week}</b> &nbsp; ${live} game${live===1?"":"s"} in progress<br>`+
     `updated ${new Date().toLocaleTimeString()}`;
   msgEl.hidden = true;
+  }catch(err){
+    note(`Something went wrong drawing the board: ${err.message}. The data loaded, so this is a bug `+
+         `in the page rather than your sheet.`, true);
+  }
   btn.disabled=false;
 }
 
