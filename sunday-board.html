@@ -137,12 +137,15 @@
   .game{background:var(--panel);border-radius:5px;border-left:4px solid var(--line);
     padding:10px 14px;margin:7px 0}
   .game.g-live{border-left-color:var(--amber);background:var(--panel-hi)}
-  .g-head{display:flex;align-items:baseline;gap:10px}
+  .g-head{display:flex;align-items:flex-start;gap:10px}
+  .g-name,.g-when{align-self:baseline}
   .g-name{font-family:var(--cond);font-weight:600;font-size:19px;white-space:nowrap}
   .g-when{font-size:12.5px;color:var(--mute);flex:1;min-width:0;overflow:hidden;
     text-overflow:ellipsis;white-space:nowrap}
   .g-net{font-family:var(--cond);font-weight:600;font-size:18px;color:var(--mute);
-    font-variant-numeric:tabular-nums}
+    font-variant-numeric:tabular-nums;text-align:right;line-height:1.08;flex:none}
+  .g-net .g-lean{display:block;font-family:var(--body);font-weight:400;font-size:11px;
+    color:var(--mute);letter-spacing:.01em}
   .g-net.up{color:var(--win)} .g-net.down{color:var(--lose)}
   .g-players{display:flex;flex-wrap:wrap;gap:6px 8px;margin-top:9px}
   .pl{display:inline-flex;align-items:baseline;gap:6px;background:rgba(255,255,255,.05);
@@ -216,8 +219,9 @@ The closest live matchups sort to the top. Teams with no opponent entered yet sh
 </div>
 <div id="notesWatch" hidden>
 <p class="note">Green is how many of your lineups start the player, red how many of your opponents do.
-A player split evenly scores for you and against you, so he cancels out. Games sort by how much they
-swing your Sunday.</p>
+A player split evenly scores for you and against you, so he cancels out. The number beside each game
+is your starters there minus theirs, so a big day in a game leaning your way helps you on balance.
+Games sort by how far they lean, either direction.</p>
 </div>
 
 </div>
@@ -420,9 +424,12 @@ async function loadOpponents(){
       if(!r.ok) continue;
       const text = await r.text();
       if(!/MY TEAM/i.test(text)) continue;
-      return parseCSV(text).map(o=>({
+      const rows = parseCSV(text);
+      // their team name: accept any header that starts "oppon", so a typo still works
+      const oppKey = Object.keys(rows[0]||{}).find(k=>/^OPPON/.test(k));
+      return rows.map(o=>({
         team:o["MY TEAM"],
-        who:(o["OPPONENT"]||"").trim(),      // optional column: their team name
+        who:(oppKey ? o[oppKey] : "").trim(),
         name: o.POSITION==="DF" ? fixTeam(o["NFL TEAM"])+" D/ST" : `${o["FIRST NAME"]} ${o["LAST NAME"]}`.trim(),
         nfl: fixTeam(o["NFL TEAM"]), pos:o.POSITION
       })).filter(p=>p.team && p.pos);
@@ -642,7 +649,8 @@ function renderWatch(roster, opps, gameOf){
         <div class="g-head">
           <span class="g-name">${g.name}</span>
           <span class="g-when">${g.label}</span>
-          <span class="g-net ${g.net>0?"up":g.net<0?"down":""}">${g.net>0?"+":""}${g.net}</span>
+          <span class="g-net ${g.net>0?"up":g.net<0?"down":""}"><b>${g.net>0?"+":""}${g.net}</b>
+            <span class="g-lean">${g.net>0?"your way":g.net<0?"their way":"even"}</span></span>
         </div>
         <div class="g-players">${g.players
           .sort((a,b)=>(b.mine-b.against)-(a.mine-a.against) || (b.mine+b.against)-(a.mine+a.against))
