@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fantasy Football Board</title>
+<link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAFlklEQVR42r2XbYxdVRWGn7X2uefOvTMdoB/W0mooUpsGrS2opYCWFrVgtT+IVStSlY9oIMaETMQE5KbBmJA0Gu0PoyTWTjQSaqAQ1NB0ZGpbhVgEi6jAZEY62imZttAO9+ucs/fyx5mZTMLc6YxO3b9Oztk577ve/e71IQBUKsr27WHp5zcsjMp2N7CZEJYDwuwsQ/Vl4ImsJt8bePh3r49hytjDZds+8gmN3EMS6bstC1gwZnOJChIploVjIfN39HUf3EelogJw6Zeuuz4uuv3Be4IPXhCdxejHVTAsqFOnzpE0/cf6d/f2yGVfuXYB5l5Qp4vM+wDiOK/LvDinwYchxK9S8a7LxdHF/x9wAHHmfXBxdLF416UmbLHMGyb/k+Qigkz3FyZimTcTtkQiLLVgIDM/c1VFEHzwZD4DwKnDqWJACKEFW9SCIcLSCLCZGk5VMTOq9RppltJeKtNZnoOK8GZ1hJF6lcg52tvKrUmMahHNBFxEUBFG6lXiqMCVy97PjR9ax9oVq1lw4VycKkOnhhl4/d/s2reHI6+8SEepjJm1/uWyL6+b1oVXEXwIVBs1rlqxmq7P3MHaFasRjfINIRvd6AAh8xn3/2wH3T2P0VFqb6nEtAg4VZI0xYB7t97JrTd8FhFHmtTxIaATDGgYIQSKcZE0y9hwzxf518kTFAvxpErodM671mxQLpZ45N6d3HbjVrI0odmsISIUomgcOD8iJXIRSZJQiNu4ftXVNJImKpNDRec68yzL6Ggr86NvfIcPLl9Fo/EWkYvQUZd7C5TaOgDI0vq4pXJnC0sWvHMqD0ytgIhQSxo8ePs9XPu+D9Oo5+A+eApxTFwscX/3D+h94TDP/u05VKO3gb351tmcjMyQgFPHmeoIn/voJj511cdpNqtEUZ4oi8V2Hjnwa/b/+RDXXH4lG755M0NvDKOuQBgloKOI/UODeV5ooYJOHjmkWcr8zou4+6bbsOARBNWIs9URHj34G677wNV0/eS7PPXc73nw9m9xtP/vmAVEwMyIogKnzpzkyKsvUiq2jROblgdUlLONKpvWrOddC5eQNKuoOrzPaC930nv0Gfb+cT/rVq7h1Nk3+NqmLzBwYhCfJagomc8oxCUePbyPweEhLuq4AB/8TEwoGMbaFVdgo4aaqE5neQ5PPvs0T2x/iOEzpzl+6gQr33M5aVLHzCjGJf459Bo7H++mva1EsNbZMJq8cBuFKGLJ/IWjnpZxZVKfctfmW7jpmo0c/uuf+Oqnb8F8SpLUct+LYMC3u7/PyTOnuaB9TsvoWxPAcOpoi4sT4PP3BVdg0dz5LJq7gCveu5JkNB+MkVYXc9fO++h5/g/nBG9pQhWlkTT5x2B/nmUnSGgYaZqSpkketeTfi8V26mlK148f4FcHfzst8JYEDCNyEY8dfiq/doWYzGf44PEhECxPt4IQx2WKxXaOvHKULQ/cSXfPXuZ1Xjgt8ClrgYpSbdTYun4z9938dTrLc95ONGS89Nqr/LxnLw/3PkmwQEepTOb99BuZqYqRiDBSq7Js8SV8cs16LnnHYhbPW8hIvcrAiUGe/sszPN/3ErVmnY5SO6p6rvo/KYEwVU/gVKknTWrNOk4dkXOEYPldjyLKxRJOFT9D4Gk3JD4EioWYUrENLL+iSF5oxkrvfwmejwtmDIiKYYTWDb3hvccHT7AwCupnLPcElwdRMTMGVIw9EjlBbHZHoSnjNpPIiRh71Jzf4ZPsuDinYP78o+eDiU+y4+b8Du3bdWg4mGxTpyJOneUkzocaZpgXp06dSjDZ1rfr0LBSqWj/7t6erJFsxDjm4siJisy66iri4shhHMsaycb+3b09VCrqOHDAqFT09A+7+zqXX/pLcRZA5mE2b1bHc9GXLfDTrKa39v/iwNGxqfw/d7+3C9YllxUAAAAASUVORK5CYII=">
+<link rel="apple-touch-icon" href="data:image/png;base64,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">
+<meta name="apple-mobile-web-app-title" content="Fantasy Football Board">
+<meta name="application-name" content="Fantasy Football Board">
+<meta name="theme-color" content="#25603F">
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap');
+  :root{
+    --pitch:#0C2318;      /* night turf */
+    --panel:#11301F;
+    --panel-hi:#17402A;
+    --line:#1E4A33;
+    --chalk:#EDF3EB;      /* yard markings */
+    --mute:#84A492;
+    --amber:#F5A623;      /* in play */
+    --win:#5FD48D;
+    --lose:#F0685F;
+    --cond:"Barlow Condensed","Oswald","Arial Narrow",system-ui,sans-serif;
+    --body:"Barlow",system-ui,-apple-system,Segoe UI,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html{background:var(--pitch)}
+  body{margin:0;padding:0 0 70px;background:var(--pitch);color:var(--chalk);
+    font:16px/1.45 var(--body);-webkit-font-smoothing:antialiased}
+  .wrap{max-width:900px;margin:0 auto;padding:0 14px}
+
+  header{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;
+    padding:22px 0 12px;border-bottom:2px solid var(--line)}
+  h1{margin:0;font-family:var(--cond);font-weight:700;font-size:38px;line-height:.95;
+    letter-spacing:.01em}
+  .meta{font-family:var(--cond);font-weight:500;font-size:15px;color:var(--mute);
+    text-align:right;line-height:1.35}
+  .meta b{color:var(--chalk);font-weight:600}
+
+  .bar{display:flex;gap:9px;align-items:center;flex-wrap:wrap;padding:13px 0 6px}
+  button{font:600 14px/1 var(--body);padding:9px 15px;border-radius:4px;cursor:pointer;
+    background:transparent;color:var(--chalk);border:1px solid var(--line)}
+  button:hover{border-color:var(--mute)}
+  button.solid{background:var(--chalk);color:var(--pitch);border-color:var(--chalk)}
+  button:disabled{opacity:.4;cursor:default}
+  button:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+  label.auto{display:flex;gap:7px;align-items:center;font-size:14px;color:var(--mute);cursor:pointer}
+  input[type=checkbox]{accent-color:var(--win)}
+
+  /* ---- matchup ribbon ---- */
+  .team{margin:9px 0;background:var(--panel);border-radius:5px;overflow:hidden;
+    border-left:4px solid var(--line)}
+  .team.is-live{border-left-color:var(--amber);background:var(--panel-hi)}
+  .team.is-final{opacity:.82}
+  .row{display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;gap:16px;align-items:center;
+    padding:13px 15px;cursor:pointer}
+  @media (max-width:620px){
+    h1{font-size:30px}
+    .tabs{gap:18px}
+    .tab{font-size:17px}
+    .row{grid-template-columns:1fr auto;gap:7px 12px;padding:12px}
+    .name{grid-row:1;grid-column:1/-1}
+    .scores{grid-row:2;grid-column:1;gap:7px}
+    .margin{grid-row:2;grid-column:2;min-width:0;font-size:16px}
+    .prog{grid-row:3;grid-column:1/-1;text-align:left;line-height:1.45}
+    .prog .left{margin-left:0}
+    .score{font-size:25px;min-width:0}
+    .name .t{font-size:20px}
+    .league{white-space:normal}
+    .detail{padding:0 12px 14px}
+  }
+  .row:hover{background:rgba(255,255,255,.035)}
+
+  .name{min-width:0}
+  .name .t{display:flex;align-items:center;gap:9px;font-family:var(--cond);font-weight:600;
+    font-size:24px;line-height:1.05;letter-spacing:.005em}
+  .league{display:block;font-family:var(--body);font-size:12.5px;font-weight:400;color:var(--mute);
+    margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--line);flex:none}
+  .dot.live{background:var(--amber);animation:pulse 2.4s ease-in-out infinite}
+  .dot.done{background:var(--win)}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+  @media (prefers-reduced-motion:reduce){ .dot.live{animation:none} }
+
+  .prog{font-size:13px;color:var(--mute);text-align:right;white-space:nowrap;line-height:1.5}
+  .prog .left{color:#5F8471}
+
+  .scores{display:flex;align-items:baseline;gap:9px;font-family:var(--cond);font-weight:600}
+  .score{font-size:30px;line-height:1;font-variant-numeric:tabular-nums;min-width:78px;
+    text-align:right}
+  .score.them{color:var(--mute)}
+  .vs{font-family:var(--body);font-size:11px;font-weight:500;color:#4E7361}
+
+  .margin{font-family:var(--cond);font-weight:600;font-size:17px;min-width:70px;text-align:right;
+    font-variant-numeric:tabular-nums;color:var(--mute)}
+  .margin.up{color:var(--win)}
+  .margin.down{color:var(--lose)}
+
+  /* ---- lineups ---- */
+  .detail{display:none;padding:0 15px 16px}
+  .team.open .detail{display:block}
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:26px}
+  @media (max-width:660px){ .cols{grid-template-columns:1fr;gap:18px} }
+  .who{font-family:var(--cond);font-weight:600;font-size:15px;color:var(--mute);
+    padding-bottom:5px;border-bottom:1px solid var(--line);margin-bottom:2px}
+  .col:first-child .who{color:var(--chalk);border-bottom-color:var(--mute)}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  td{padding:6px 8px 6px 0;border-bottom:1px solid rgba(255,255,255,.055)}
+  td.n{color:var(--mute);font-size:12.5px;white-space:nowrap}
+  td.p{text-align:right;font-family:var(--cond);font-weight:600;font-size:16px;
+    font-variant-numeric:tabular-nums;width:62px}
+  tr.yet td{color:#5F8471}
+  tr.yet td.p{color:#5F8471}
+  tr.playing td.n{color:var(--amber)}
+  tr.playing td.p{color:var(--amber)}
+
+  /* ---- tabs ---- */
+  .tabs{display:flex;gap:26px;border-bottom:1px solid var(--line);margin-top:14px}
+  .tab{font-family:var(--cond);font-weight:600;font-size:19px;letter-spacing:.005em;
+    padding:9px 1px;border:0;border-bottom:3px solid transparent;border-radius:0;
+    background:none;color:var(--mute);cursor:pointer;margin-bottom:-1px}
+  .tab:hover{color:var(--chalk)}
+  .tab.on{color:var(--chalk);border-bottom-color:var(--amber)}
+  .tab:focus-visible{outline:2px solid var(--amber);outline-offset:3px}
+
+  /* ---- players to watch ---- */
+  .watch-bar{display:flex;align-items:center;gap:9px;flex-wrap:wrap;padding:14px 0 2px}
+  .watch-lead{font-size:13.5px;color:var(--mute)}
+  .thresh{display:flex;gap:5px}
+  .tbtn{font:500 12px/1 var(--body);padding:5px 9px;border:1px solid var(--line);
+    background:transparent;color:var(--mute);border-radius:3px;cursor:pointer}
+  .tbtn.on{border-color:var(--chalk);color:var(--chalk)}
+  .tbtn:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+
+  .game{background:var(--panel);border-radius:5px;border-left:4px solid var(--line);
+    padding:10px 14px;margin:7px 0}
+  .game.g-live{border-left-color:var(--amber);background:var(--panel-hi)}
+  .g-head{display:flex;align-items:baseline;gap:10px}
+  .g-name{font-family:var(--cond);font-weight:600;font-size:19px;white-space:nowrap}
+  .g-when{font-size:12.5px;color:var(--mute);flex:1;min-width:0;overflow:hidden;
+    text-overflow:ellipsis;white-space:nowrap}
+  .g-net{font-family:var(--cond);font-weight:600;font-size:18px;color:var(--mute);
+    font-variant-numeric:tabular-nums}
+  .g-net.up{color:var(--win)} .g-net.down{color:var(--lose)}
+  .g-players{display:flex;flex-wrap:wrap;gap:6px 8px;margin-top:9px}
+  .pl{display:inline-flex;align-items:baseline;gap:6px;background:rgba(255,255,255,.05);
+    border-radius:3px;padding:4px 9px;font-size:13.5px}
+  .pn{font-weight:500}
+  .pp{font-size:11.5px;color:var(--mute)}
+  .pc{font-family:var(--cond);font-weight:600;font-size:14px;font-variant-numeric:tabular-nums}
+  .pc i{color:#4E7361;font-style:normal;margin:0 1px}
+  .for{color:var(--win);font-style:normal}
+  .ag{color:var(--lose);font-style:normal}
+
+  /* ---- messages ---- */
+  #msg{padding:14px 16px;border-radius:5px;background:#3A2A10;border-left:4px solid var(--amber);
+    margin:14px 0;font-size:14.5px;line-height:1.5}
+  #msg.bad{background:#3A1614;border-left-color:var(--lose)}
+  #paste p{font-size:14px;color:var(--mute);margin:0 0 8px}
+  textarea{width:100%;background:#0A1C13;color:var(--chalk);border:1px solid var(--line);
+    border-radius:4px;padding:9px;font:12px/1.45 ui-monospace,Menlo,monospace}
+  .empty{color:var(--mute);padding:34px 0;font-size:15px}
+  .note{color:var(--mute);font-size:13px;line-height:1.55;margin:9px 0 0}
+  .note.gap{border-left:3px solid var(--amber);background:rgba(245,166,35,.07);
+    padding:11px 13px;border-radius:0 4px 4px 0}
+  .detail .note{margin-top:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>Fantasy Football Board</h1>
+  <div class="meta" id="meta">not loaded</div>
+</header>
+
+<nav class="tabs" role="tablist">
+  <button class="tab on" id="tabScores" role="tab" aria-selected="true">Scores</button>
+  <button class="tab" id="tabWatch" role="tab" aria-selected="false">Players to watch</button>
+</nav>
+
+<div class="bar">
+  <button id="refresh" class="solid">Refresh</button>
+  <label class="auto"><input type="checkbox" id="auto" checked> refresh every minute</label>
+  <button id="expand">Expand all</button>
+</div>
+
+<div id="msg" hidden></div>
+<div id="paste" hidden>
+  <p style="font-size:14px;margin:0 0 8px">Paste the Rosters tab here instead. In the sheet: select
+  all (Ctrl+A), copy, then paste below. The board will score it straight away.</p>
+  <textarea id="pasteBox" rows="5" style="width:100%;font-family:var(--mono);font-size:11.5px;
+    border:1px solid var(--rule);border-radius:2px;padding:8px" placeholder="LEAGUE ID&#9;LEAGUE NAME&#9;TEAM NAME&#9;..."></textarea>
+  <div style="margin-top:8px"><button id="usePaste" class="solid">Use this roster</button></div>
+</div>
+<div id="paneScores">
+  <div id="board"><div class="empty">Loading your rosters&hellip;</div></div>
+</div>
+
+<div id="paneWatch" hidden>
+  <div class="watch-bar">
+    <span class="watch-lead">Starters appearing in</span>
+    <span class="thresh" id="thresh"></span>
+    <span class="watch-lead">of your lineups</span>
+  </div>
+  <div id="watch"><div class="empty">Loading&hellip;</div></div>
+</div>
+
+<div id="notesScores">
+<p class="note gap">A defense that blocks a kick or records a safety reads low here, since neither
+shows up in the box score. That is 2 points in the FFPC leagues for a block, 5 for a safety.</p>
+<p class="note">Lineups come from your master sheet, yours from Rosters and theirs from Opponents.
+The closest live matchups sort to the top. Teams with no opponent entered yet show your side alone.</p>
+</div>
+<div id="notesWatch" hidden>
+<p class="note">Green is how many of your lineups start the player, red how many of your opponents do.
+A player split evenly scores for you and against you, so he cancels out. Games sort by how much they
+swing your Sunday.</p>
+</div>
+
+</div>
+<script>
+const DOC = "1cJy81PkUcrmj58-NshAE_f8Kj1vNLGNu_ePxWmyvngs";
+const GID = "1233809098";          // Rosters tab
+const OPP_GID = "432739575";       // Opponents tab
+// Tried in order. The first two need the sheet shared "anyone with the link"; the third is the
+// published CSV, which the browser often refuses because of the domain it redirects to.
+const SOURCES = [
+  {why:"gviz", url:()=>`https://docs.google.com/spreadsheets/d/${DOC}/gviz/tq?tqx=out:csv&gid=${GID}&cb=${Date.now()}`},
+  {why:"export", url:()=>`https://docs.google.com/spreadsheets/d/${DOC}/export?format=csv&gid=${GID}&cb=${Date.now()}`},
+  {why:"published", url:()=>`https://docs.google.com/spreadsheets/d/e/2PACX-1vRi-N381C8kqHQjS-Ghp23jdMdSEj5NZcjh1LJrJsYGXKr5pWcR_II221Eud3xb_YA2zEXCkUPMMAAM/pub?gid=1233809098&single=true&output=csv&cb=${Date.now()}`}
+];
+let sourceUsed = "";
+const OPP_SOURCES = [
+  ()=>`https://docs.google.com/spreadsheets/d/${DOC}/gviz/tq?tqx=out:csv&gid=${OPP_GID}&cb=${Date.now()}`,
+  ()=>`https://docs.google.com/spreadsheets/d/${DOC}/export?format=csv&gid=${OPP_GID}&cb=${Date.now()}`
+];
+const BASE = "https://site.api.espn.com/apis/site/v2/sports/football/nfl";
+
+/* ---------- scoring ---------- */
+const SYS_OF = t => t==="Aging Stars" ? "ESPN"
+  : t==="Firm of Bowers & Loveland" ? "RDW"
+  : t==="Warren and Peace" ? "Yahoo" : "FFPC";
+
+function ffpc(s,pos){
+  let p = s.passYd*0.05 + s.passTD*4 - s.int - s.fumLost
+        + s.rushYd*0.1 + s.rushTD*6
+        + s.recYd*0.1 + s.recTD*6 + s.rec*(pos==="TE"?1.5:1)
+        + s.twoPt*2 + s.twoPtPass*2 + s.returnTD*6 + s.xp;
+  for(const d of s.fgs) p += d<=30 ? 3 : 3+(d-30)*0.1;
+  if(s.isDef){
+    p += s.sacks + s.takeaways*2 + s.defTD*6;
+    const a=s.ptsAllowed;
+    p += a===0?12 : a<=6?8 : a<=13?5 : a<=19?3 : a<=23?1 : a<=29?0 : -2;
+  }
+  return p;
+}
+function yahoo(s){
+  let p = s.passYd*0.04 + (s.passYd>=300?3:0) + s.passTD*6 - s.int*2
+        + s.rushYd*0.1 + (s.rushYd>=150?3:0) + s.rushTD*6
+        + s.recYd*0.1 + (s.recYd>=150?3:0) + s.recTD*6 + s.rec
+        + s.twoPt*2 - s.fumLost*2 + s.returnTD*6 + s.xp;   // Yahoo scores the scorer only
+  for(const d of s.fgs) p += d>=50?5 : d>=40?4 : 3;
+  if(s.isDef){
+    p += s.sacks + s.takeaways*2 + s.defTD*6 + s.returnYd*0.01 + (s.returnYd>=150?2:0);
+    const a=s.ptsAllowed;
+    p += a===0?10 : a<=6?7 : a<=13?3 : a<=20?1 : a<=27?0 : a<=34?-1 : -4;
+  }else{
+    p += s.returnYd*0.01 + (s.returnYd>=100?2:0);
+  }
+  return p;
+}
+function espn(s){
+  const b = y => Math.trunc(y/10);            // whole 10-yard blocks only
+  let p = b(s.passYd)*0.2 + s.passTD*3
+        + b(s.rushYd)*0.5 + s.rushTD*6
+        + b(s.recYd)*0.5 + s.recTD*6
+        + s.twoPt*2 + s.twoPtPass*1 + s.returnTD*6 + s.xp + s.fgs.length*3;
+  if(s.isDef){
+    p += s.sacks + s.takeaways + s.defTD*6;
+    const a=s.ptsAllowed;
+    p += a===0?6 : a<=6?3 : 0;
+  }
+  return p;
+}
+function rdw(s,pos){
+  const rr = pos==="RB"?0.14:0.10, cr = pos==="RB"?0.25:1;
+  let p = s.passYd*0.05 + s.passTD*4 - s.int - s.fumLost
+        + s.rushYd*rr + s.rushTD*6
+        + s.recYd*0.1 + s.recTD*6 + s.rec*cr
+        + s.twoPt*2 + s.twoPtPass*2 + s.xp;
+  for(const d of s.fgs) p += d<=30 ? 3 : 3+(d-30)*0.1;
+  if(s.isDef){
+    p += s.sacks + s.takeaways*2 + s.defTD*6;
+    const a=s.ptsAllowed;
+    p += a===0?10 : a<=5?8 : a<=10?6 : a<=15?4 : a<=20?2 : 0;
+  }
+  return p;
+}
+const score = (sys,s,pos) => sys==="FFPC"?ffpc(s,pos) : sys==="Yahoo"?yahoo(s)
+  : sys==="ESPN"?espn(s) : rdw(s,pos);
+
+/* ---------- helpers ---------- */
+const blank = () => ({passYd:0,passTD:0,int:0,rushYd:0,rushTD:0,recYd:0,recTD:0,rec:0,
+  fumLost:0,twoPt:0,twoPtPass:0,xp:0,fgs:[],returnYd:0,returnTD:0,
+  isDef:false,sacks:0,takeaways:0,defTD:0,ptsAllowed:0});
+const num = v => { const n=parseFloat(String(v).replace(/[^0-9.\-]/g,"")); return isNaN(n)?0:n; };
+const pair = v => String(v).split("/").map(num);
+const norm = n => n.toLowerCase().replace(/[^a-z ]/g,"").replace(/\b(jr|sr|ii|iii|iv|v)\b/g,"").trim();
+const TEAMFIX = {JAC:"JAX", WAS:"WSH", ARZ:"ARI", LA:"LAR"};
+const fixTeam = t => TEAMFIX[t] || t;
+
+function parseCSV(text){
+  const sep = (text.split("\n")[0].split("\t").length > 3) ? "\t" : ",";
+  const rows=[]; let row=[], cell="", q=false;
+  for(let i=0;i<text.length;i++){
+    const c=text[i];
+    if(q){ if(c==='"'){ if(text[i+1]==='"'){cell+='"';i++;} else q=false; } else cell+=c; }
+    else if(c==='"') q=true;
+    else if(c===sep){ row.push(cell); cell=""; }
+    else if(c==="\n"){ row.push(cell); rows.push(row); row=[]; cell=""; }
+    else if(c!=="\r") cell+=c;
+  }
+  if(cell||row.length){ row.push(cell); rows.push(row); }
+  const head = rows.shift().map(h=>h.trim().toUpperCase());
+  return rows.filter(r=>r.length>1).map(r=>{
+    const o={}; head.forEach((h,i)=>o[h]=(r[i]||"").trim()); return o;
+  });
+}
+
+function grab(cat,labels,stats,s){
+  const L = k => { const i=labels.findIndex(x=>x.toUpperCase()===k); return i<0?null:stats[i]; };
+  if(cat==="passing"){ s.passYd+=num(L("YDS")); s.passTD+=num(L("TD")); s.int+=num(L("INT")); }
+  else if(cat==="rushing"){ s.rushYd+=num(L("YDS")); s.rushTD+=num(L("TD")); }
+  else if(cat==="receiving"){ s.recYd+=num(L("YDS")); s.recTD+=num(L("TD")); s.rec+=num(L("REC")); }
+  else if(cat==="fumbles"){ s.fumLost+=num(L("LOST")); }
+  else if(cat==="kicking"){ const xp=L("XP"); if(xp!==null) s.xp+=pair(xp)[0]; }
+  else if(cat==="kickReturns"||cat==="puntReturns"){ s.returnYd+=num(L("YDS")); s.returnTD+=num(L("TD")); }
+}
+
+function parseGame(sum, store){
+  const comp = sum?.header?.competitions?.[0];
+  const sc = {};
+  for(const c of (comp?.competitors||[])) sc[c.team?.abbreviation] = num(c.score);
+  const teams = Object.keys(sc);
+
+  for(const tb of (sum?.boxscore?.players||[])){
+    const abbr = tb?.team?.abbreviation;
+    for(const cat of (tb.statistics||[])){
+      for(const a of (cat.athletes||[])){
+        const nm=a?.athlete?.displayName; if(!nm) continue;
+        const k=norm(nm);
+        if(!store.players.has(k)) store.players.set(k,{name:nm,team:abbr,s:blank()});
+        grab(cat.name, cat.labels||[], a.stats||[], store.players.get(k).s);
+      }
+    }
+  }
+  const ensure = (nm, abbr) => {
+    const k = norm(nm);
+    if(!store.players.has(k)) store.players.set(k,{name:nm, team:abbr, s:blank()});
+    return store.players.get(k).s;
+  };
+  for(const sp of (sum?.scoringPlays||[])){
+    const txt = sp?.text || "", abbr = sp.team?.abbreviation;
+    const m = txt.match(/^(.+?)\s+(\d+)\s*Yd Field Goal/i);
+    if(m) ensure(m[1], abbr).fgs.push(parseInt(m[2],10));
+    // e.g. "(Carson Wentz Pass to Justin Jefferson for Two-Point Conversion)"
+    const tp = txt.match(/\(([^)]+?)\s+Pass to\s+([^)]+?)\s+for Two-Point Conversion\)/i);
+    if(tp){ ensure(tp[2], abbr).twoPt++; ensure(tp[1], abbr).twoPtPass++; }
+    const tr = txt.match(/\(([^)]+?)\s+Run for Two-Point Conversion\)/i);
+    if(tr) ensure(tr[1], abbr).twoPt++;
+  }
+  const lost={}, per={};
+  for(const tb of (sum?.boxscore?.players||[])){
+    const abbr=tb?.team?.abbreviation; if(!abbr) continue;
+    const L=(lb,st,k)=>{const i=lb.findIndex(x=>x.toUpperCase()===k);return i<0?0:num(st[i]);};
+    let sacks=0,ints=0,defTD=0,retYd=0,fl=0;
+    for(const cat of (tb.statistics||[])) for(const a of (cat.athletes||[])){
+      const lb=cat.labels||[], st=a.stats||[];
+      if(cat.name==="defensive") sacks+=L(lb,st,"SACKS");
+      if(cat.name==="interceptions"){ ints+=L(lb,st,"INT"); defTD+=L(lb,st,"TD"); }
+      if(cat.name==="fumbles") fl+=L(lb,st,"LOST");
+      if(cat.name==="kickReturns"||cat.name==="puntReturns"){ defTD+=L(lb,st,"TD"); retYd+=L(lb,st,"YDS"); }
+    }
+    lost[abbr]=fl; per[abbr]={sacks,ints,defTD,retYd};
+  }
+  for(const abbr of Object.keys(per)){
+    const opp = teams.find(t=>t!==abbr), t=per[abbr];
+    const d=blank(); d.isDef=true; d.ptsAllowed=sc[opp]??0;
+    d.sacks=t.sacks; d.takeaways=t.ints+(lost[opp]||0); d.defTD=t.defTD; d.returnYd=t.retYd;
+    store.defs.set(abbr,{name:abbr+" D/ST",team:abbr,s:d});
+  }
+}
+
+/* ---------- render ---------- */
+const boardEl=document.getElementById("board"), metaEl=document.getElementById("meta"),
+      msgEl=document.getElementById("msg");
+let openTeams = new Set(), roster=null;
+
+function note(text, bad){
+  msgEl.hidden=false; msgEl.className = bad?"bad":""; msgEl.innerHTML=text;
+}
+
+let pastedCSV = null;
+
+function rowsToRoster(rows){
+  return rows.map(o=>({
+    team:o["TEAM NAME"], league:o["LEAGUE NAME"],
+    name: o.POSITION==="DF" ? fixTeam(o["NFL TEAM"])+" D/ST" : `${o["FIRST NAME"]} ${o["LAST NAME"]}`.trim(),
+    nfl: fixTeam(o["NFL TEAM"]), pos:o.POSITION, start:o["ROSTER STATUS"]==="Starter"
+  })).filter(p=>p.team);
+}
+
+async function loadOpponents(){
+  for(const u of OPP_SOURCES){
+    try{
+      const r = await fetch(u(), {cache:"no-store"});
+      if(!r.ok) continue;
+      const text = await r.text();
+      if(!/MY TEAM/i.test(text)) continue;
+      return parseCSV(text).map(o=>({
+        team:o["MY TEAM"],
+        who:(o["OPPONENT"]||"").trim(),      // optional column: their team name
+        name: o.POSITION==="DF" ? fixTeam(o["NFL TEAM"])+" D/ST" : `${o["FIRST NAME"]} ${o["LAST NAME"]}`.trim(),
+        nfl: fixTeam(o["NFL TEAM"]), pos:o.POSITION
+      })).filter(p=>p.team && p.pos);
+    }catch(err){}
+  }
+  return null;                      // no opponents tab yet — that's fine
+}
+
+async function loadRoster(){
+  if(pastedCSV){ sourceUsed = "pasted"; return rowsToRoster(parseCSV(pastedCSV)); }
+  const tried = [];
+  for(const s of SOURCES){
+    try{
+      const r = await fetch(s.url(), {cache:"no-store"});
+      if(!r.ok){ tried.push(`${s.why}: HTTP ${r.status}`); continue; }
+      const text = await r.text();
+      if(!/TEAM NAME/i.test(text)){ tried.push(`${s.why}: not the roster tab`); continue; }
+      sourceUsed = s.why;
+      return rowsToRoster(parseCSV(text));
+    }catch(err){ tried.push(`${s.why}: ${err.message}`); }
+  }
+  throw new Error(tried.join(" &middot; "));
+}
+
+async function refresh(){
+  const btn=document.getElementById("refresh"); btn.disabled=true;
+  try{
+    if(!roster) roster = await loadRoster();
+  }catch(err){
+    note(`Couldn't read the sheet. Tried &mdash; ${err.message}.<br><br>`+
+         `If every route was blocked, open the master, press Share, and set General access to `+
+         `<b>Anyone with the link &mdash; Viewer</b>. That's what the first two routes need. `+
+         `Otherwise paste the roster below and the board works normally.`, true);
+    document.getElementById("paste").hidden = false;
+    btn.disabled=false; return;
+  }
+
+  const opps = await loadOpponents();
+
+  let sb;
+  try{ sb = await (await fetch(`${BASE}/scoreboard`,{cache:"no-store"})).json(); }
+  catch(err){ note("Couldn't reach the stat feed: "+err.message, true); btn.disabled=false; return; }
+
+  const week = sb.week?.number ?? "?";
+  const events = sb.events||[];
+  const gameOf = new Map();            // team -> {state, label}
+  const store = {players:new Map(), defs:new Map()};
+  let live=0, pending=[];
+
+  for(const e of events){
+    const comp=e.competitions?.[0], st=comp?.status?.type?.state;
+    const label=comp?.status?.type?.shortDetail||"";
+    const short = e.shortName || "";
+    for(const c of (comp?.competitors||[])) gameOf.set(c.team?.abbreviation,{state:st,label,game:short});
+    if(st==="in") live++;
+    if(st!=="pre") pending.push(e.id);
+  }
+  await Promise.all(pending.map(async id=>{
+    try{ parseGame(await (await fetch(`${BASE}/summary?event=${id}`,{cache:"no-store"})).json(), store); }
+    catch(err){}
+  }));
+
+  const find = p => p.pos==="DF" ? store.defs.get(p.nfl) : store.players.get(norm(p.name));
+
+  function sideOf(list, sys){
+    let total=0, yet=0, going=0;
+    const lines = list.map(p=>{
+      const hit=find(p), g=gameOf.get(p.nfl);
+      const pts = hit ? score(sys,hit.s,p.pos==="DF"?"DF":p.pos) : 0;
+      total += pts;
+      const state = !g ? "bye" : g.state==="pre" ? "pre" : g.state==="in" ? "in" : "post";
+      if(state==="pre") yet++; else if(state==="in") going++;
+      return {p, pts, state, label: g?g.label:"bye"};
+    }).sort((a,b)=>b.pts-a.pts);
+    return {total, yet, going, lines, n:list.length};
+  }
+
+  const teams = [...new Set(roster.map(r=>r.team))];
+  const cards = teams.map(t=>{
+    const sys=SYS_OF(t);
+    const mine=roster.filter(r=>r.team===t);
+    const me = sideOf(mine.filter(r=>r.start), sys);
+    const oppList = opps ? opps.filter(o=>o.team===t) : [];
+    const them = oppList.length ? sideOf(oppList, sys) : null;
+    const oppName = (oppList.find(o=>o.who)||{}).who || "Opponent";
+    return {team:t, league:mine[0].league, sys, me, them, oppName,
+            margin: them ? me.total-them.total : null,
+            going: me.going + (them?them.going:0)};
+  }).sort((a,b)=>{
+    // closest live matchups first, then live, then by margin
+    const aL = a.going>0, bL = b.going>0;
+    if(aL!==bL) return bL-aL;
+    if(a.margin!==null && b.margin!==null) return Math.abs(a.margin)-Math.abs(b.margin);
+    return b.me.total-a.me.total;
+  });
+
+  const sideTable = (side, who) => `
+    <div class="col">
+      <div class="who">${who}</div>
+      <table><tbody>${side.lines.map(l=>`
+        <tr class="${l.state==="pre"?"yet":l.state==="in"?"playing":""}">
+          <td>${l.p.name}</td><td class="n">${l.p.pos}</td>
+          <td class="n">${l.label}</td><td class="p">${l.pts.toFixed(2)}</td>
+        </tr>`).join("")}</tbody></table>
+    </div>`;
+
+  boardEl.innerHTML = cards.map(c=>{
+    const lead = c.margin===null ? "" :
+      c.margin>0 ? "up" : c.margin<0 ? "down" : "tied";
+    const marginTxt = c.margin===null ? "&mdash;"
+      : (c.margin>0?"+":"") + c.margin.toFixed(2);
+    return `
+    <div class="team${openTeams.has(c.team)?" open":""}${c.going?" is-live":(c.me.yet?"":" is-final")}" data-team="${c.team}">
+      <div class="row">
+        <div class="name">
+          <span class="t"><span class="dot ${c.going?"live":(c.me.yet?"":"done")}"></span>${c.team}</span>
+          <span class="league">${c.league}</span>
+        </div>
+        <div class="prog">${
+          c.going===0 ? "none playing"
+          : c.them ? `${c.me.going} vs ${c.them.going} playing`
+          : `${c.me.going} playing`}<br><span class="left">${
+          c.them ? `${c.me.yet} vs ${c.them.yet} left to play`
+          : `${c.me.yet} left to play`}</span></div>
+        <div class="scores">
+          <span class="score">${c.me.total.toFixed(2)}</span>
+          <span class="vs">${c.them?"vs":""}</span>
+          <span class="score them">${c.them?c.them.total.toFixed(2):"&mdash;"}</span>
+        </div>
+        <div class="margin ${lead}">${marginTxt}</div>
+      </div>
+      <div class="detail">
+        ${c.them
+          ? `<div class="cols">${sideTable(c.me,c.team)}${sideTable(c.them,c.oppName)}</div>`
+          : `<div class="cols">${sideTable(c.me,"You")}</div>
+             <p class="note">No opponent entered for this team yet.</p>`}
+      </div>
+    </div>`;
+  }).join("");
+
+  renderWatch(roster, opps, gameOf);
+
+  boardEl.querySelectorAll(".row").forEach(r=>r.addEventListener("click",()=>{
+    const el=r.parentElement, t=el.dataset.team;
+    el.classList.toggle("open");
+    el.classList.contains("open") ? openTeams.add(t) : openTeams.delete(t);
+  }));
+
+  metaEl.innerHTML = `<b>Week ${week}</b> &nbsp; ${live} game${live===1?"":"s"} in progress<br>`+
+    `updated ${new Date().toLocaleTimeString()}`;
+  msgEl.hidden = true;
+  btn.disabled=false;
+}
+
+document.getElementById("refresh").addEventListener("click", ()=>{ roster=null; refresh(); });
+// note: a pasted roster is kept until you paste a new one
+document.getElementById("expand").addEventListener("click", e=>{
+  const all = boardEl.querySelectorAll(".team");
+  const opening = openTeams.size < all.length;
+  openTeams = new Set(opening ? [...all].map(t=>t.dataset.team) : []);
+  all.forEach(t=>t.classList.toggle("open", opening));
+  e.target.textContent = opening ? "Collapse all" : "Expand all";
+});
+document.getElementById("usePaste").addEventListener("click", ()=>{
+  const v = document.getElementById("pasteBox").value.trim();
+  if(!v) return;
+  pastedCSV = v; roster = null;
+  document.getElementById("paste").hidden = true;
+  refresh();
+});
+let minAppear = 3;
+let lastWatch = null;
+
+function renderWatch(roster, opps, gameOf){
+  lastWatch = {roster, opps, gameOf};
+  const el=document.getElementById("watch");
+
+  // one entry per player, counting starting spots only
+  const tally=new Map();
+  const add=(p, side)=>{
+    const k=p.name+"|"+p.nfl;
+    if(!tally.has(k)) tally.set(k,{name:p.name,pos:p.pos,nfl:p.nfl,mine:0,against:0});
+    tally.get(k)[side]++;
+  };
+  for(const r of roster) if(r.start) add(r,"mine");
+  for(const o of (opps||[])) add(o,"against");
+
+  // group the players who clear the threshold by the NFL game they're in
+  const games=new Map();
+  for(const t of tally.values()){
+    if(t.mine+t.against < minAppear) continue;
+    const g=gameOf.get(t.nfl);
+    const key=(g&&g.game) || "Not playing this week";
+    if(!games.has(key)) games.set(key,{label:(g&&g.label)||"", state:(g&&g.state)||"", players:[]});
+    games.get(key).players.push(t);
+  }
+
+  const list=[...games.entries()].map(([name,g])=>{
+    const mine=g.players.reduce((a,p)=>a+p.mine,0);
+    const against=g.players.reduce((a,p)=>a+p.against,0);
+    return {name, ...g, mine, against, net:mine-against};
+  }).sort((a,b)=> Math.abs(b.net)-Math.abs(a.net)
+                || (b.mine+b.against)-(a.mine+a.against));
+
+  document.getElementById("thresh").innerHTML =
+    [2,3,4].map(n=>`<button class="tbtn${n===minAppear?" on":""}" data-n="${n}">${n}+</button>`).join("");
+  document.querySelectorAll(".tbtn").forEach(b=>b.addEventListener("click",()=>{
+    minAppear=+b.dataset.n;
+    renderWatch(lastWatch.roster, lastWatch.opps, lastWatch.gameOf);
+  }));
+
+  if(!list.length){
+    el.innerHTML = `<p class="note">No player is starting in ${minAppear} or more of your lineups.</p>`;
+  } else {
+    el.innerHTML = list.map(g=>`
+      <div class="game${g.state==="in"?" g-live":""}">
+        <div class="g-head">
+          <span class="g-name">${g.name}</span>
+          <span class="g-when">${g.label}</span>
+          <span class="g-net ${g.net>0?"up":g.net<0?"down":""}">${g.net>0?"+":""}${g.net}</span>
+        </div>
+        <div class="g-players">${g.players
+          .sort((a,b)=>(b.mine-b.against)-(a.mine-a.against) || (b.mine+b.against)-(a.mine+a.against))
+          .map(p=>`<span class="pl"><span class="pn">${p.name}</span><span class="pp">${p.pos}</span><span class="pc"><em class="for">${p.mine}</em><i>/</i><em class="ag">${p.against}</em></span></span>`).join("")}</div>
+      </div>`).join("");
+  }
+}
+
+function showTab(which){
+  const scores = which === "scores";
+  document.getElementById("paneScores").hidden = !scores;
+  document.getElementById("paneWatch").hidden  =  scores;
+  document.getElementById("notesScores").hidden = !scores;
+  document.getElementById("notesWatch").hidden  =  scores;
+  for(const [id,on] of [["tabScores",scores],["tabWatch",!scores]]){
+    const b=document.getElementById(id);
+    b.classList.toggle("on", on);
+    b.setAttribute("aria-selected", on ? "true" : "false");
+  }
+  document.getElementById("expand").style.display = scores ? "" : "none";
+}
+document.getElementById("tabScores").addEventListener("click",()=>showTab("scores"));
+document.getElementById("tabWatch").addEventListener("click",()=>showTab("watch"));
+
+let timer=setInterval(()=>{ if(document.getElementById("auto").checked) refresh(); },60000);
+refresh();
+</script>
+</body>
+</html>
