@@ -54,6 +54,7 @@
     border-left:4px solid var(--line)}
   .team.is-live{border-left-color:var(--amber);background:var(--panel-hi)}
   .team.is-final{opacity:.82}
+  .team.is-blank{opacity:.5}
   .row{display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;gap:16px;align-items:center;
     padding:13px 15px;cursor:pointer}
   @media (max-width:620px){
@@ -192,10 +193,10 @@
 
 <div id="msg" hidden></div>
 <div id="paste" hidden>
-  <p style="font-size:14px;margin:0 0 8px">Paste the Rosters tab here instead. In the sheet: select
+  <p style="font-size:14px;margin:0 0 8px">Paste the Lineups tab here instead. In the sheet: select
   all (Ctrl+A), copy, then paste below. The board will score it straight away.</p>
   <textarea id="pasteBox" rows="5" style="width:100%;font-family:var(--mono);font-size:11.5px;
-    border:1px solid var(--rule);border-radius:2px;padding:8px" placeholder="LEAGUE ID&#9;LEAGUE NAME&#9;TEAM NAME&#9;..."></textarea>
+    border:1px solid var(--rule);border-radius:2px;padding:8px" placeholder="MY TEAM&#9;SIDE&#9;FIRST NAME&#9;LAST NAME&#9;..."></textarea>
   <div style="margin-top:8px"><button id="usePaste" class="solid">Use this roster</button></div>
 </div>
 <div id="paneScores">
@@ -214,8 +215,9 @@
 <div id="notesScores">
 <p class="note gap">A defense that blocks a kick or records a safety reads low here, since neither
 shows up in the box score. That is 2 points in the FFPC leagues for a block, 5 for a safety.</p>
-<p class="note">Lineups come from your master sheet, yours from Rosters and theirs from Opponents.
-The closest live matchups sort to the top. Teams with no opponent entered yet show your side alone.</p>
+<p class="note">Both lineups come from the Lineups tab of your master sheet, filled by the grabbers.
+The closest live matchups sort to the top, and any team you haven&rsquo;t grabbed yet sits at the bottom
+marked &ldquo;not grabbed&rdquo;. Flex slots that arrive without a position are looked up automatically.</p>
 </div>
 <div id="notesWatch" hidden>
 <p class="note">Green is how many of your lineups start the player, red how many of your opponents do.
@@ -227,26 +229,32 @@ Games sort by how far they lean, either direction.</p>
 </div>
 <script>
 const DOC = "1cJy81PkUcrmj58-NshAE_f8Kj1vNLGNu_ePxWmyvngs";
-const GID = "1233809098";          // Rosters tab
-const OPP_GID = "432739575";       // Opponents tab
+const LINEUP_GID = "432739575";     // the Lineups tab
 // Tried in order. The first two need the sheet shared "anyone with the link"; the third is the
 // published CSV, which the browser often refuses because of the domain it redirects to.
-const SOURCES = [
-  {why:"gviz", url:()=>`https://docs.google.com/spreadsheets/d/${DOC}/gviz/tq?tqx=out:csv&gid=${GID}&cb=${Date.now()}`},
-  {why:"export", url:()=>`https://docs.google.com/spreadsheets/d/${DOC}/export?format=csv&gid=${GID}&cb=${Date.now()}`},
-  {why:"published", url:()=>`https://docs.google.com/spreadsheets/d/e/2PACX-1vRi-N381C8kqHQjS-Ghp23jdMdSEj5NZcjh1LJrJsYGXKr5pWcR_II221Eud3xb_YA2zEXCkUPMMAAM/pub?gid=1233809098&single=true&output=csv&cb=${Date.now()}`}
+const LINEUP_SOURCES = [
+  ()=>`https://docs.google.com/spreadsheets/d/${DOC}/gviz/tq?tqx=out:csv&gid=${LINEUP_GID}&cb=${Date.now()}`,
+  ()=>`https://docs.google.com/spreadsheets/d/${DOC}/export?format=csv&gid=${LINEUP_GID}&cb=${Date.now()}`
 ];
 let sourceUsed = "";
-const OPP_SOURCES = [
-  ()=>`https://docs.google.com/spreadsheets/d/${DOC}/gviz/tq?tqx=out:csv&gid=${OPP_GID}&cb=${Date.now()}`,
-  ()=>`https://docs.google.com/spreadsheets/d/${DOC}/export?format=csv&gid=${OPP_GID}&cb=${Date.now()}`
-];
 const BASE = "https://site.api.espn.com/apis/site/v2/sports/football/nfl";
 
 /* ---------- scoring ---------- */
-const SYS_OF = t => t==="Aging Stars" ? "ESPN"
-  : t==="Firm of Bowers & Loveland" ? "RDW"
-  : t==="Warren and Peace" ? "Yahoo" : "FFPC";
+// Your ten teams. Changes once a season, not weekly.
+const TEAMS = [
+  {team:"NCBlackBears1", sys:"FFPC",  league:"Big Gorilla Tourney (Sep 1 7:00 PM) #127378"},
+  {team:"NCBlackBears2", sys:"FFPC",  league:"Baby Gorilla Tourney (Sep 3 2:00 PM) #110111"},
+  {team:"NCBlackBears3", sys:"FFPC",  league:"Baby Gorilla Tourney (Sep 2 5:00 PM) #110110"},
+  {team:"NCBlackBears4", sys:"FFPC",  league:"Big Gorilla Tourney *DRAFT-A-THON* (Sep 4 12:00 PM) #105113"},
+  {team:"NCBlackBears5", sys:"FFPC",  league:"Baby Gorilla Tourney (Sep 3 7:30 PM) #128325"},
+  {team:"NCBlackBears6", sys:"FFPC",  league:"Baby Gorilla Tourney - 1hr Slow #127827"},
+  {team:"NCBlackBears7", sys:"FFPC",  league:"Big Gorilla Tourney *DRAFT-A-THON* (Sep 7 2:00 PM) #129414"},
+  {team:"Aging Stars",               sys:"ESPN",  league:"Hewitt"},
+  {team:"Firm of Bowers & Loveland", sys:"RDW",   league:"RDW League"},
+  {team:"Warren and Peace",          sys:"Yahoo", league:"No Drama"}
+];
+const CFG = new Map(TEAMS.map(t=>[t.team,t]));
+const SYS_OF = t => (CFG.get(t)||{}).sys || "FFPC";
 
 function ffpc(s,pos){
   let p = s.passYd*0.05 + s.passTD*4 - s.int - s.fumLost
@@ -409,47 +417,71 @@ function note(text, bad){
 
 let pastedCSV = null;
 
-function rowsToRoster(rows){
-  return rows.map(o=>({
-    team:o["TEAM NAME"], league:o["LEAGUE NAME"],
-    name: o.POSITION==="DF" ? fixTeam(o["NFL TEAM"])+" D/ST" : `${o["FIRST NAME"]} ${o["LAST NAME"]}`.trim(),
-    nfl: fixTeam(o["NFL TEAM"]), pos:o.POSITION, start:o["ROSTER STATUS"]==="Starter"
-  })).filter(p=>p.team);
+
+
+// Position lookup, for FFPC Flex slots that arrive unlabelled.
+const posCache = new Map();          // nfl team -> Map(normalised name -> position)
+async function rosterOf(nfl){
+  if(posCache.has(nfl)) return posCache.get(nfl);
+  const m = new Map();
+  try{
+    const r = await fetch(`${BASE}/teams/${nfl.toLowerCase()}/roster`, {cache:"force-cache"});
+    if(r.ok){
+      const d = await r.json();
+      for(const grp of (d.athletes||[])){
+        for(const a of (grp.items||grp||[])){
+          const nm=a?.fullName || a?.displayName, ps=a?.position?.abbreviation;
+          if(nm && ps) m.set(norm(nm), ps);
+        }
+      }
+    }
+  }catch(err){}
+  posCache.set(nfl, m);
+  return m;
+}
+async function resolveFlex(rows){
+  const need = rows.filter(r=>!r.pos || r.pos==="FLEX");
+  if(!need.length) return;
+  const teams=[...new Set(need.map(r=>r.nfl))];
+  const maps=await Promise.all(teams.map(t=>rosterOf(t)));
+  const byTeam=new Map(teams.map((t,i)=>[t,maps[i]]));
+  for(const r of need){
+    const hit=(byTeam.get(r.nfl)||new Map()).get(norm(r.name));
+    r.pos = hit==="TE" ? "TE" : hit==="WR" ? "WR" : hit==="RB" ? "RB" : (r.pos||"WR");
+    r.guessed = !hit;
+  }
 }
 
-async function loadOpponents(){
-  for(const u of OPP_SOURCES){
+// One tab holds both sides of every matchup.
+function rowsToLineups(rows){
+  const key = (re) => Object.keys(rows[0]||{}).find(k=>re.test(k));
+  const kSide = key(/^SIDE/), kOpp = key(/^OPPON/);
+  return rows.map(o=>{
+    const nfl = fixTeam((o["NFL TEAM"]||"").trim().toUpperCase());
+    const pos = (o.POSITION||"").trim().toUpperCase();
+    const side = ((kSide ? o[kSide] : "") || "").trim().toLowerCase();
+    return {
+      team:(o["MY TEAM"]||"").trim(),
+      mine: !/^(opp|them|their)/.test(side),   // anything not marked opponent is yours
+      who:(kOpp ? o[kOpp] : "").trim(),
+      name: pos==="DF" ? nfl+" D/ST" : `${o["FIRST NAME"]||""} ${o["LAST NAME"]||""}`.trim(),
+      nfl, pos
+    };
+  }).filter(p=>p.team && p.name);
+}
+
+async function loadLineups(){
+  if(pastedCSV){ sourceUsed="pasted"; return rowsToLineups(parseCSV(pastedCSV)); }
+  const tried=[];
+  for(const u of LINEUP_SOURCES){
     try{
       const r = await fetch(u(), {cache:"no-store"});
-      if(!r.ok) continue;
+      if(!r.ok){ tried.push(`HTTP ${r.status}`); continue; }
       const text = await r.text();
-      if(!/MY TEAM/i.test(text)) continue;
-      const rows = parseCSV(text);
-      // their team name: accept any header that starts "oppon", so a typo still works
-      const oppKey = Object.keys(rows[0]||{}).find(k=>/^OPPON/.test(k));
-      return rows.map(o=>({
-        team:o["MY TEAM"],
-        who:(oppKey ? o[oppKey] : "").trim(),
-        name: o.POSITION==="DF" ? fixTeam(o["NFL TEAM"])+" D/ST" : `${o["FIRST NAME"]} ${o["LAST NAME"]}`.trim(),
-        nfl: fixTeam(o["NFL TEAM"]), pos:o.POSITION
-      })).filter(p=>p.team && p.pos);
-    }catch(err){}
-  }
-  return null;                      // no opponents tab yet — that's fine
-}
-
-async function loadRoster(){
-  if(pastedCSV){ sourceUsed = "pasted"; return rowsToRoster(parseCSV(pastedCSV)); }
-  const tried = [];
-  for(const s of SOURCES){
-    try{
-      const r = await fetch(s.url(), {cache:"no-store"});
-      if(!r.ok){ tried.push(`${s.why}: HTTP ${r.status}`); continue; }
-      const text = await r.text();
-      if(!/TEAM NAME/i.test(text)){ tried.push(`${s.why}: not the roster tab`); continue; }
-      sourceUsed = s.why;
-      return rowsToRoster(parseCSV(text));
-    }catch(err){ tried.push(`${s.why}: ${err.message}`); }
+      if(!/MY TEAM/i.test(text)){ tried.push("not the Lineups tab"); continue; }
+      sourceUsed = "sheet";
+      return rowsToLineups(parseCSV(text));
+    }catch(err){ tried.push(err.message); }
   }
   throw new Error(tried.join(" &middot; "));
 }
@@ -457,17 +489,15 @@ async function loadRoster(){
 async function refresh(){
   const btn=document.getElementById("refresh"); btn.disabled=true;
   try{
-    if(!roster) roster = await loadRoster();
+    if(!roster){ roster = await loadLineups(); await resolveFlex(roster); }
   }catch(err){
     note(`Couldn't read the sheet. Tried &mdash; ${err.message}.<br><br>`+
          `If every route was blocked, open the master, press Share, and set General access to `+
-         `<b>Anyone with the link &mdash; Viewer</b>. That's what the first two routes need. `+
-         `Otherwise paste the roster below and the board works normally.`, true);
+         `<b>Anyone with the link &mdash; Viewer</b>. Otherwise paste the Lineups tab below and the `+
+         `board works normally.`, true);
     document.getElementById("paste").hidden = false;
     btn.disabled=false; return;
   }
-
-  const opps = await loadOpponents();
 
   let sb;
   try{ sb = await (await fetch(`${BASE}/scoreboard`,{cache:"no-store"})).json(); }
@@ -507,23 +537,25 @@ async function refresh(){
     return {total, yet, going, lines, n:list.length};
   }
 
-  const teams = [...new Set(roster.map(r=>r.team))];
-  const cards = teams.map(t=>{
-    const sys=SYS_OF(t);
-    const mine=roster.filter(r=>r.team===t);
-    const me = sideOf(mine.filter(r=>r.start), sys);
-    const oppList = opps ? opps.filter(o=>o.team===t) : [];
-    const them = oppList.length ? sideOf(oppList, sys) : null;
-    const oppName = (oppList.find(o=>o.who)||{}).who || "Opponent";
-    return {team:t, league:mine[0].league, sys, me, them, oppName,
-            margin: them ? me.total-them.total : null,
-            going: me.going + (them?them.going:0)};
+  const cards = TEAMS.map(cfg=>{
+    const t=cfg.team, sys=cfg.sys;
+    const rows = roster.filter(r=>r.team===t);
+    const mineRows = rows.filter(r=>r.mine), oppRows = rows.filter(r=>!r.mine);
+    if(!mineRows.length && !oppRows.length)
+      return {team:t, league:cfg.league, sys, me:null, them:null, oppName:"", margin:null, going:0};
+    const me = mineRows.length ? sideOf(mineRows, sys) : null;
+    const them = oppRows.length ? sideOf(oppRows, sys) : null;
+    const oppName = (rows.find(o=>o.who)||{}).who || "Opponent";
+    return {team:t, league:cfg.league, sys, me, them, oppName,
+            margin: (me&&them) ? me.total-them.total : null,
+            going: (me?me.going:0) + (them?them.going:0)};
   }).sort((a,b)=>{
     // closest live matchups first, then live, then by margin
+    if(!a.me !== !b.me) return a.me ? -1 : 1;          // missing lineups last
     const aL = a.going>0, bL = b.going>0;
     if(aL!==bL) return bL-aL;
     if(a.margin!==null && b.margin!==null) return Math.abs(a.margin)-Math.abs(b.margin);
-    return b.me.total-a.me.total;
+    return (b.me?b.me.total:0)-(a.me?a.me.total:0);
   });
 
   const sideTable = (side, who) => `
@@ -542,35 +574,37 @@ async function refresh(){
     const marginTxt = c.margin===null ? "&mdash;"
       : (c.margin>0?"+":"") + c.margin.toFixed(2);
     return `
-    <div class="team${openTeams.has(c.team)?" open":""}${c.going?" is-live":(c.me.yet?"":" is-final")}" data-team="${c.team}">
+    <div class="team${openTeams.has(c.team)?" open":""}${!c.me?" is-blank":c.going?" is-live":(c.me.yet?"":" is-final")}" data-team="${c.team}">
       <div class="row">
         <div class="name">
           <span class="t"><span class="dot ${c.going?"live":(c.me.yet?"":"done")}"></span>${c.team}</span>
           <span class="league">${c.league}</span>
         </div>
-        <div class="prog">${
+        <div class="prog">${!c.me ? "not grabbed" : (
           c.going===0 ? "none playing"
           : c.them ? `${c.me.going} vs ${c.them.going} playing`
-          : `${c.me.going} playing`}<br><span class="left">${
+          : `${c.me.going} playing`)}${!c.me ? "" : `<br><span class="left">${
           c.them ? `${c.me.yet} vs ${c.them.yet} left to play`
-          : `${c.me.yet} left to play`}</span></div>
+          : `${c.me.yet} left to play`}</span>`}</div>
         <div class="scores">
-          <span class="score">${c.me.total.toFixed(2)}</span>
+          <span class="score">${c.me?c.me.total.toFixed(2):"&mdash;"}</span>
           <span class="vs">${c.them?"vs":""}</span>
           <span class="score them">${c.them?c.them.total.toFixed(2):"&mdash;"}</span>
         </div>
         <div class="margin ${lead}">${marginTxt}</div>
       </div>
       <div class="detail">
-        ${c.them
-          ? `<div class="cols">${sideTable(c.me,c.team)}${sideTable(c.them,c.oppName)}</div>`
-          : `<div class="cols">${sideTable(c.me,"You")}</div>
-             <p class="note">No opponent entered for this team yet.</p>`}
+        ${!c.me
+          ? `<p class="note">Nothing grabbed for this team yet. Open its matchup page and click the grabber.</p>`
+          : c.them
+            ? `<div class="cols">${sideTable(c.me,c.team)}${sideTable(c.them,c.oppName)}</div>`
+            : `<div class="cols">${sideTable(c.me,c.team)}</div>
+               <p class="note">Only your side came through for this team.</p>`}
       </div>
     </div>`;
   }).join("");
 
-  renderWatch(roster, opps, gameOf);
+  renderWatch(roster, gameOf);
 
   boardEl.querySelectorAll(".row").forEach(r=>r.addEventListener("click",()=>{
     const el=r.parentElement, t=el.dataset.team;
@@ -603,8 +637,8 @@ document.getElementById("usePaste").addEventListener("click", ()=>{
 let minAppear = 3;
 let lastWatch = null;
 
-function renderWatch(roster, opps, gameOf){
-  lastWatch = {roster, opps, gameOf};
+function renderWatch(roster, gameOf){
+  lastWatch = {roster, gameOf};
   const el=document.getElementById("watch");
 
   // one entry per player, counting starting spots only
@@ -614,8 +648,7 @@ function renderWatch(roster, opps, gameOf){
     if(!tally.has(k)) tally.set(k,{name:p.name,pos:p.pos,nfl:p.nfl,mine:0,against:0});
     tally.get(k)[side]++;
   };
-  for(const r of roster) if(r.start) add(r,"mine");
-  for(const o of (opps||[])) add(o,"against");
+  for(const r of roster) add(r, r.mine ? "mine" : "against");
 
   // group the players who clear the threshold by the NFL game they're in
   const games=new Map();
@@ -638,7 +671,7 @@ function renderWatch(roster, opps, gameOf){
     [2,3,4].map(n=>`<button class="tbtn${n===minAppear?" on":""}" data-n="${n}">${n}+</button>`).join("");
   document.querySelectorAll(".tbtn").forEach(b=>b.addEventListener("click",()=>{
     minAppear=+b.dataset.n;
-    renderWatch(lastWatch.roster, lastWatch.opps, lastWatch.gameOf);
+    renderWatch(lastWatch.roster, lastWatch.gameOf);
   }));
 
   if(!list.length){
