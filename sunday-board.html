@@ -422,6 +422,7 @@ async function loadOpponents(){
       if(!/MY TEAM/i.test(text)) continue;
       return parseCSV(text).map(o=>({
         team:o["MY TEAM"],
+        who:(o["OPPONENT"]||"").trim(),      // optional column: their team name
         name: o.POSITION==="DF" ? fixTeam(o["NFL TEAM"])+" D/ST" : `${o["FIRST NAME"]} ${o["LAST NAME"]}`.trim(),
         nfl: fixTeam(o["NFL TEAM"]), pos:o.POSITION
       })).filter(p=>p.team && p.pos);
@@ -506,7 +507,8 @@ async function refresh(){
     const me = sideOf(mine.filter(r=>r.start), sys);
     const oppList = opps ? opps.filter(o=>o.team===t) : [];
     const them = oppList.length ? sideOf(oppList, sys) : null;
-    return {team:t, league:mine[0].league, sys, me, them,
+    const oppName = (oppList.find(o=>o.who)||{}).who || "Opponent";
+    return {team:t, league:mine[0].league, sys, me, them, oppName,
             margin: them ? me.total-them.total : null,
             going: me.going + (them?them.going:0)};
   }).sort((a,b)=>{
@@ -554,7 +556,7 @@ async function refresh(){
       </div>
       <div class="detail">
         ${c.them
-          ? `<div class="cols">${sideTable(c.me,"You")}${sideTable(c.them,"Opponent")}</div>`
+          ? `<div class="cols">${sideTable(c.me,c.team)}${sideTable(c.them,c.oppName)}</div>`
           : `<div class="cols">${sideTable(c.me,"You")}</div>
              <p class="note">No opponent entered for this team yet.</p>`}
       </div>
