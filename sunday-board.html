@@ -273,7 +273,8 @@ function yahoo(s){
   let p = s.passYd*0.04 + (s.passYd>=300?3:0) + s.passTD*6 - s.int*2
         + s.rushYd*0.1 + (s.rushYd>=150?3:0) + s.rushTD*6
         + s.recYd*0.1 + (s.recYd>=150?3:0) + s.recTD*6 + s.rec
-        + s.twoPt*2 - s.fumLost*2 + s.returnTD*6 + s.xp;   // Yahoo scores the scorer only
+        + s.twoPt*2 - s.fumLost*2 + s.returnTD*6
+        + s.xp - s.xpMiss*1.5;        // Yahoo docks 1.5 for a missed extra point
   for(const d of s.fgs) p += d>=50?5 : d>=40?4 : 3;
   if(s.isDef){
     p += s.sacks + s.takeaways*2 + s.defTD*6 + s.returnYd*0.01 + (s.returnYd>=150?2:0);
@@ -316,7 +317,7 @@ const score = (sys,s,pos) => sys==="FFPC"?ffpc(s,pos) : sys==="Yahoo"?yahoo(s)
 
 /* ---------- helpers ---------- */
 const blank = () => ({passYd:0,passTD:0,int:0,rushYd:0,rushTD:0,recYd:0,recTD:0,rec:0,
-  fumLost:0,twoPt:0,twoPtPass:0,xp:0,fgs:[],returnYd:0,returnTD:0,
+  fumLost:0,twoPt:0,twoPtPass:0,xp:0,xpMiss:0,fgs:[],returnYd:0,returnTD:0,
   isDef:false,sacks:0,takeaways:0,defTD:0,ptsAllowed:0});
 const num = v => { const n=parseFloat(String(v).replace(/[^0-9.\-]/g,"")); return isNaN(n)?0:n; };
 const pair = v => String(v).split("/").map(num);
@@ -366,7 +367,10 @@ function grab(cat,labels,stats,s){
   else if(cat==="rushing"){ s.rushYd+=num(L("YDS")); s.rushTD+=num(L("TD")); }
   else if(cat==="receiving"){ s.recYd+=num(L("YDS")); s.recTD+=num(L("TD")); s.rec+=num(L("REC")); }
   else if(cat==="fumbles"){ s.fumLost+=num(L("LOST")); }
-  else if(cat==="kicking"){ const xp=L("XP"); if(xp!==null) s.xp+=pair(xp)[0]; }
+  else if(cat==="kicking"){
+    const xp=L("XP");
+    if(xp!==null){ const v=pair(xp); s.xp+=v[0]||0; s.xpMiss+=Math.max(0,(v[1]||0)-(v[0]||0)); }
+  }
   else if(cat==="kickReturns"||cat==="puntReturns"){ s.returnYd+=num(L("YDS")); s.returnTD+=num(L("TD")); }
 }
 
