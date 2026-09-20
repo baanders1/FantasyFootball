@@ -159,6 +159,25 @@
   .pc i{color:#4E7361;font-style:normal;margin:0 1px}
   .for{color:var(--win);font-style:normal}
   .ag{color:var(--lose);font-style:normal}
+  .g-row{cursor:pointer}
+  .g-caret{display:inline-block;font-size:11px;font-weight:400;color:var(--mute);
+    margin-right:7px;transform:translateY(-2px);transition:transform .12s}
+  .game.open .g-caret{transform:translateY(-2px) rotate(90deg)}
+  .g-row:hover .g-caret{color:var(--chalk)}
+  .g-detail{display:none;margin-top:12px;padding-top:11px;border-top:1px solid var(--line)}
+  .game.open .g-detail{display:block}
+  .wp{padding:7px 0}
+  .wp + .wp{border-top:1px solid rgba(255,255,255,.055)}
+  .wp-name{font-family:var(--cond);font-weight:600;font-size:16px}
+  .wp-name em{font-family:var(--body);font-weight:400;font-size:11.5px;
+    font-style:normal;color:var(--mute);margin-left:5px}
+  .wp-side{display:flex;align-items:baseline;gap:9px;margin-top:5px;flex-wrap:wrap}
+  .wlbl{font-size:11px;letter-spacing:.02em;flex:none;min-width:112px}
+  .wlbl.for{color:var(--win)} .wlbl.ag{color:var(--lose)}
+  .wts{display:flex;flex-wrap:wrap;gap:5px 6px}
+  .wt{background:rgba(255,255,255,.05);border-radius:3px;padding:3px 8px;font-size:13px}
+  .wt i{font-style:normal;color:var(--mute);font-size:11px;margin-left:6px}
+  @media (max-width:520px){ .wlbl{min-width:0;width:100%} }
 
   /* ---- messages ---- */
   #msg{padding:14px 16px;border-radius:5px;background:#3A2A10;border-left:4px solid var(--amber);
@@ -225,7 +244,7 @@ Teams stay in a fixed order, and any you haven&rsquo;t grabbed yet shows as
 <p class="note">Green is how many of your lineups start the player, red how many of your opponents do.
 A player split evenly scores for you and against you, so he cancels out. The number beside each game
 is your starters there minus theirs, so a big day in a game leaning your way helps you on balance.
-Games sort by how far they lean, either direction.</p>
+Games in progress come first, then games still to play, then finals &mdash; and within each, the ones that lean furthest, either direction.</p>
 </div>
 
 </div>
@@ -433,7 +452,7 @@ function parseGame(sum, store){
 /* ---------- render ---------- */
 const boardEl=document.getElementById("board"), metaEl=document.getElementById("meta"),
       msgEl=document.getElementById("msg");
-let openTeams = new Set(), roster=null;
+let openTeams = new Set(), openGames = new Set(), roster=null;
 
 function note(text, bad){
   msgEl.hidden=false; msgEl.className = bad?"bad":""; msgEl.innerHTML=text;
@@ -673,8 +692,12 @@ function renderWatch(roster, gameOf){
   const tally=new Map();
   const add=(p, side)=>{
     const k=p.name+"|"+p.nfl;
-    if(!tally.has(k)) tally.set(k,{name:p.name,pos:p.pos,nfl:p.nfl,mine:0,against:0});
-    tally.get(k)[side]++;
+    if(!tally.has(k)) tally.set(k,{name:p.name,pos:p.pos,nfl:p.nfl,mine:0,against:0,forMe:[],vsMe:[]});
+    const t=tally.get(k);
+    t[side]++;
+    const league=(CFG.get(p.team)||{}).league || "";
+    // your own lineup shows your team name; the other side shows who you're playing
+    (side==="mine" ? t.forMe : t.vsMe).push({name: side==="mine" ? p.team : (p.who || "Opponent"), league});
   };
   for(const r of roster) add(r, r.mine ? "mine" : "against");
 
@@ -688,11 +711,15 @@ function renderWatch(roster, gameOf){
     games.get(key).players.push(t);
   }
 
+  const STATE_RANK = {in:0, pre:1, post:2};
+  const rank = g => (g.state in STATE_RANK) ? STATE_RANK[g.state] : 3;
+
   const list=[...games.entries()].map(([name,g])=>{
     const mine=g.players.reduce((a,p)=>a+p.mine,0);
     const against=g.players.reduce((a,p)=>a+p.against,0);
     return {name, ...g, mine, against, net:mine-against};
-  }).sort((a,b)=> Math.abs(b.net)-Math.abs(a.net)
+  }).sort((a,b)=> rank(a)-rank(b)
+                || Math.abs(b.net)-Math.abs(a.net)
                 || (b.mine+b.against)-(a.mine+a.against));
 
   document.getElementById("thresh").innerHTML =
@@ -705,18 +732,39 @@ function renderWatch(roster, gameOf){
   if(!list.length){
     el.innerHTML = `<p class="note">No player is starting in ${minAppear} or more of your lineups.</p>`;
   } else {
-    el.innerHTML = list.map(g=>`
-      <div class="game${g.state==="in"?" g-live":""}">
-        <div class="g-head">
-          <span class="g-name">${g.name}</span>
-          <span class="g-when">${g.label}</span>
-          <span class="g-net ${g.net>0?"up":g.net<0?"down":""}"><b>${g.net>0?"+":""}${g.net}</b>
-            <span class="g-lean">${g.net>0?"your way":g.net<0?"their way":"even"}</span></span>
+    // your own team names already say which league; an opponent's doesn't
+    const teamList = (arr, showLeague) => arr
+      .map(x=>`<span class="wt">${x.name}${(showLeague&&x.league)?`<i>${x.league}</i>`:""}</span>`).join("");
+
+    el.innerHTML = list.map(g=>{
+      const players = g.players
+        .sort((a,b)=>(b.mine-b.against)-(a.mine-a.against) || (b.mine+b.against)-(a.mine+a.against));
+      return `
+      <div class="game${g.state==="in"?" g-live":""}${openGames.has(g.name)?" open":""}" data-game="${g.name}">
+        <div class="g-row">
+          <div class="g-head">
+            <span class="g-name"><b class="g-caret">&#9656;</b>${g.name}</span>
+            <span class="g-when">${g.label}</span>
+            <span class="g-net ${g.net>0?"up":g.net<0?"down":""}"><b>${g.net>0?"+":""}${g.net}</b>
+              <span class="g-lean">${g.net>0?"your way":g.net<0?"their way":"even"}</span></span>
+          </div>
+          <div class="g-players">${players
+            .map(p=>`<span class="pl"><span class="pn">${p.name}</span><span class="pp">${p.pos}</span><span class="pc"><em class="for">${p.mine}</em><i>/</i><em class="ag">${p.against}</em></span></span>`).join("")}</div>
         </div>
-        <div class="g-players">${g.players
-          .sort((a,b)=>(b.mine-b.against)-(a.mine-a.against) || (b.mine+b.against)-(a.mine+a.against))
-          .map(p=>`<span class="pl"><span class="pn">${p.name}</span><span class="pp">${p.pos}</span><span class="pc"><em class="for">${p.mine}</em><i>/</i><em class="ag">${p.against}</em></span></span>`).join("")}</div>
-      </div>`).join("");
+        <div class="g-detail">${players.map(p=>`
+          <div class="wp">
+            <div class="wp-name">${p.name} <em>${p.pos} &middot; ${p.nfl}</em></div>
+            ${p.forMe.length?`<div class="wp-side"><span class="wlbl for">starts for you</span><span class="wts">${teamList(p.forMe,false)}</span></div>`:""}
+            ${p.vsMe.length?`<div class="wp-side"><span class="wlbl ag">starts against you</span><span class="wts">${teamList(p.vsMe,true)}</span></div>`:""}
+          </div>`).join("")}</div>
+      </div>`;
+    }).join("");
+
+    el.querySelectorAll(".g-row").forEach(r=>r.addEventListener("click",()=>{
+      const box=r.parentElement, k=box.dataset.game;
+      box.classList.toggle("open");
+      box.classList.contains("open") ? openGames.add(k) : openGames.delete(k);
+    }));
   }
 }
 
