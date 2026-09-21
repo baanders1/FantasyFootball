@@ -79,6 +79,8 @@
     font-size:24px;line-height:1.05;letter-spacing:.005em}
   .league{display:block;font-family:var(--body);font-size:12.5px;font-weight:400;color:var(--mute);
     margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .rec-in{font-weight:500;color:var(--chalk);font-variant-numeric:tabular-nums}
+  .rec-in::before{content:"\00b7";color:var(--mute);font-weight:400;margin:0 6px}
   .dot{width:8px;height:8px;border-radius:50%;background:var(--line);flex:none}
   .dot.live{background:var(--amber);animation:pulse 2.4s ease-in-out infinite}
   .dot.done{background:var(--win)}
@@ -621,7 +623,7 @@ async function refresh(){
       <div class="row">
         <div class="name">
           <span class="t"><span class="dot ${!c.me?"":c.going?"live":(c.me.yet?"":"done")}"></span>${c.team}</span>
-          <span class="league">${c.league}</span>
+          <span class="league">${c.league}${c.myRec?`<b class="rec-in">${c.myRec}</b>`:""}</span>
         </div>
         <div class="prog">${!c.me ? "not grabbed" : (
           c.going===0 ? "none playing"
