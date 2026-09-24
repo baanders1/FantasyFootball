@@ -173,6 +173,9 @@
   .wp-name{font-family:var(--cond);font-weight:600;font-size:16px}
   .wp-name em{font-family:var(--body);font-weight:400;font-size:11.5px;
     font-style:normal;color:var(--mute);margin-left:5px}
+  .wp-more{margin:11px 0 1px;padding-top:9px;border-top:1px solid var(--line);
+    font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--mute)}
+  .wp-more + .wp{border-top:0}
   .wp-side{display:flex;align-items:baseline;gap:9px;margin-top:5px;flex-wrap:wrap}
   .wlbl{font-size:11px;letter-spacing:.02em;flex:none;min-width:112px}
   .wlbl.for{color:var(--win)} .wlbl.ag{color:var(--lose)}
@@ -246,7 +249,8 @@ Teams stay in a fixed order, and any you haven&rsquo;t grabbed yet shows as
 <p class="note">Green is how many of your lineups start the player, red how many of your opponents do.
 A player split evenly scores for you and against you, so he cancels out. The number beside each game
 is your starters there minus theirs, so a big day in a game leaning your way helps you on balance.
-Games in progress come first, then games still to play, then finals &mdash; and within each, the ones that lean furthest, either direction.</p>
+Games in progress come first, then games still to play, then finals &mdash; and within each, the ones that lean furthest, either direction.
+Open a game to see every starter you have in it, including the ones below the threshold.</p>
 </div>
 
 </div>
@@ -255,11 +259,15 @@ const DOC = "1cJy81PkUcrmj58-NshAE_f8Kj1vNLGNu_ePxWmyvngs";
 const LINEUP_GID = "432739575";     // the Lineups tab
 // Tried in order. The first two need the sheet shared "anyone with the link"; the third is the
 // published CSV, which the browser often refuses because of the domain it redirects to.
+// export first: it hands back exactly what the cell shows. gviz decides a type for
+// each column and returns nothing for cells that don't fit it, which quietly swallows
+// records like 0-2 and 2-0 when Sheets has typed the column as a date.
 const LINEUP_SOURCES = [
-  ()=>`https://docs.google.com/spreadsheets/d/${DOC}/gviz/tq?tqx=out:csv&gid=${LINEUP_GID}&cb=${Date.now()}`,
-  ()=>`https://docs.google.com/spreadsheets/d/${DOC}/export?format=csv&gid=${LINEUP_GID}&cb=${Date.now()}`
+  {name:"export", url:()=>`https://docs.google.com/spreadsheets/d/${DOC}/export?format=csv&gid=${LINEUP_GID}&cb=${Date.now()}`},
+  {name:"gviz",   url:()=>`https://docs.google.com/spreadsheets/d/${DOC}/gviz/tq?tqx=out:csv&gid=${LINEUP_GID}&cb=${Date.now()}`}
 ];
 let sourceUsed = "";
+let lineupCols = {};                 // which sheet heading filled each field
 const BASE = "https://site.api.espn.com/apis/site/v2/sports/football/nfl";
 
 /* ---------- scoring ---------- */
@@ -499,21 +507,47 @@ async function resolveFlex(rows){
 
 // One tab holds both sides of every matchup.
 function rowsToLineups(rows){
-  const key = (re) => Object.keys(rows[0]||{}).find(k=>re.test(k));
-  const kSide = key(/^SIDE/), kOpp = key(/^OPPON/);
-  const kMyRec = key(/^MY RECORD/), kOppRec = key(/^OPP RECORD/);
+  // Column headings are matched loosely: capitalisation, spacing and stray
+  // punctuation don't matter, so retyping a heading can't silently drop a column.
+  const hdr  = Object.keys(rows[0]||{});
+  const flat = s => String(s).toUpperCase().replace(/[^A-Z0-9]/g,"");
+  const taken = new Set();
+  const claim = k => { taken.add(k); return k; };
+  const key = (...alts) => {
+    for(const a of alts){                       // exact match wins outright
+      const f=flat(a), k=hdr.find(h=>!taken.has(h) && flat(h)===f);
+      if(k) return claim(k);
+    }
+    for(const a of alts){                       // then a heading that starts with it
+      const f=flat(a), k=hdr.find(h=>!taken.has(h) && flat(h).startsWith(f));
+      if(k) return claim(k);
+    }
+    return null;
+  };
+  // narrower names first, so "Opp Record" can't be swallowed by "Opponent"
+  const kMyRec = key("MY RECORD","MY REC"), kOppRec = key("OPP RECORD","OPPONENT RECORD","OPP REC");
+  const kTeam  = key("MY TEAM","TEAM"),     kSide   = key("SIDE");
+  const kFirst = key("FIRST NAME","FIRST"), kLast   = key("LAST NAME","LAST");
+  const kPos   = key("POSITION","POS"),     kNfl    = key("NFL TEAM","NFL");
+  const kOpp   = key("OPPONENT","OPP");
+  lineupCols = {team:kTeam, side:kSide, first:kFirst, last:kLast,
+                pos:kPos, nfl:kNfl, opp:kOpp, myRec:kMyRec, oppRec:kOppRec};
+
+  const g = (o,k) => k ? String(o[k] ?? "").trim() : "";
+  // a win-loss record, not a date Sheets turned it into
+  const rec = v => /^\d{1,2}-\d{1,2}(-\d{1,2})?$/.test(v) ? v : "";
   return rows.map(o=>{
-    const nfl = fixTeam((o["NFL TEAM"]||"").trim().toUpperCase());
-    const pos = (o.POSITION||"").trim().toUpperCase();
-    const side = ((kSide ? o[kSide] : "") || "").trim().toLowerCase();
+    const nfl = fixTeam(g(o,kNfl).toUpperCase());
+    const pos = g(o,kPos).toUpperCase();
+    const side = g(o,kSide).toLowerCase();
     return {
-      team:(o["MY TEAM"]||"").trim(),
+      team:g(o,kTeam),
       mine: !/^(opp|them|their)/.test(side),   // anything not marked opponent is yours
-      who:(kOpp ? o[kOpp] : "").trim(),
-      myRec:(kMyRec ? o[kMyRec] : "").trim(),
-      oppRec:(kOppRec ? o[kOppRec] : "").trim(),
+      who:g(o,kOpp),
+      myRec:rec(g(o,kMyRec)),
+      oppRec:rec(g(o,kOppRec)),
       name: pos==="DF" ? nfl+" D/ST"
-            : stripStatus(`${o["FIRST NAME"]||""} ${o["LAST NAME"]||""}`.trim()),
+            : stripStatus(`${g(o,kFirst)} ${g(o,kLast)}`.trim()),
       nfl, pos
     };
   }).filter(p=>p.team && p.name);
@@ -522,15 +556,15 @@ function rowsToLineups(rows){
 async function loadLineups(){
   if(pastedCSV){ sourceUsed="pasted"; return rowsToLineups(parseCSV(pastedCSV)); }
   const tried=[];
-  for(const u of LINEUP_SOURCES){
+  for(const s of LINEUP_SOURCES){
     try{
-      const r = await fetch(u(), {cache:"no-store"});
-      if(!r.ok){ tried.push(`HTTP ${r.status}`); continue; }
+      const r = await fetch(s.url(), {cache:"no-store"});
+      if(!r.ok){ tried.push(`${s.name}: HTTP ${r.status}`); continue; }
       const text = await r.text();
-      if(!/MY TEAM/i.test(text)){ tried.push("not the Lineups tab"); continue; }
-      sourceUsed = "sheet";
+      if(!/MY TEAM/i.test(text)){ tried.push(`${s.name}: not the Lineups tab`); continue; }
+      sourceUsed = s.name;
       return rowsToLineups(parseCSV(text));
-    }catch(err){ tried.push(err.message); }
+    }catch(err){ tried.push(`${s.name}: ${err.message}`); }
   }
   throw new Error(tried.join(" &middot; "));
 }
@@ -659,7 +693,22 @@ async function refresh(){
 
   metaEl.innerHTML = `<b>Week ${week}</b> &nbsp; ${live} game${live===1?"":"s"} in progress<br>`+
     `updated ${new Date().toLocaleTimeString()}`;
-  msgEl.hidden = true;
+
+  // a heading the sheet no longer has would otherwise just blank that column out
+  const WANT = {team:"MY TEAM", side:"SIDE", first:"FIRST NAME", last:"LAST NAME",
+                pos:"POSITION", nfl:"NFL TEAM", opp:"Opponent",
+                myRec:"My Record", oppRec:"Opp Record"};
+  const missing = Object.keys(WANT).filter(k=>!lineupCols[k]).map(k=>WANT[k]);
+  const lostRec = cards.some(c=>c.me && !c.myRec) || cards.some(c=>c.them && !c.oppRec);
+  if(missing.length){
+    note(`Your sheet has no column matching <b>${missing.join("</b>, <b>")}</b>, `+
+         `so that information is blank here. Check the heading row of the Lineups tab.`);
+  } else if(lostRec && sourceUsed==="gviz"){
+    note(`Some records are missing. This route drops any record Google Sheets can't read as `+
+         `a date, so 0-2 and 2-0 vanish while 1-1 survives. Fix it in the master: select the `+
+         `<b>My Record</b> and <b>Opp Record</b> columns, choose Format &rarr; Number &rarr; `+
+         `<b>Plain text</b>, then clear those cells and re-run the grabbers.`);
+  } else msgEl.hidden = true;
   }catch(err){
     note(`Something went wrong drawing the board: ${err.message}. The data loaded, so this is a bug `+
          `in the page rather than your sheet.`, true);
@@ -703,14 +752,20 @@ function renderWatch(roster, gameOf){
   };
   for(const r of roster) add(r, r.mine ? "mine" : "against");
 
-  // group the players who clear the threshold by the NFL game they're in
+  // the threshold decides which games are worth listing, and the headline numbers
+  const keyOf = t => { const g=gameOf.get(t.nfl); return (g&&g.game) || "Not playing this week"; };
   const games=new Map();
   for(const t of tally.values()){
     if(t.mine+t.against < minAppear) continue;
-    const g=gameOf.get(t.nfl);
-    const key=(g&&g.game) || "Not playing this week";
-    if(!games.has(key)) games.set(key,{label:(g&&g.label)||"", state:(g&&g.state)||"", players:[]});
+    const g=gameOf.get(t.nfl), key=keyOf(t);
+    if(!games.has(key)) games.set(key,{label:(g&&g.label)||"", state:(g&&g.state)||"", players:[], rest:[]});
     games.get(key).players.push(t);
+  }
+  // expanding a game shows everyone you have in it, threshold or not
+  for(const t of tally.values()){
+    if(t.mine+t.against >= minAppear) continue;
+    const box=games.get(keyOf(t));
+    if(box) box.rest.push(t);
   }
 
   const STATE_RANK = {in:0, pre:1, post:2};
@@ -738,9 +793,17 @@ function renderWatch(roster, gameOf){
     const teamList = (arr, showLeague) => arr
       .map(x=>`<span class="wt">${x.name}${(showLeague&&x.league)?`<i>${x.league}</i>`:""}</span>`).join("");
 
+    const byLean = (a,b)=>(b.mine-b.against)-(a.mine-a.against) || (b.mine+b.against)-(a.mine+a.against);
+    const block = p=>`
+      <div class="wp">
+        <div class="wp-name">${p.name} <em>${p.pos} &middot; ${p.nfl}</em></div>
+        ${p.forMe.length?`<div class="wp-side"><span class="wlbl for">starts for you</span><span class="wts">${teamList(p.forMe,false)}</span></div>`:""}
+        ${p.vsMe.length?`<div class="wp-side"><span class="wlbl ag">starts against you</span><span class="wts">${teamList(p.vsMe,true)}</span></div>`:""}
+      </div>`;
+
     el.innerHTML = list.map(g=>{
-      const players = g.players
-        .sort((a,b)=>(b.mine-b.against)-(a.mine-a.against) || (b.mine+b.against)-(a.mine+a.against));
+      const players = g.players.sort(byLean);
+      const rest    = (g.rest||[]).sort(byLean);
       return `
       <div class="game${g.state==="in"?" g-live":""}${openGames.has(g.name)?" open":""}" data-game="${g.name}">
         <div class="g-row">
@@ -753,12 +816,8 @@ function renderWatch(roster, gameOf){
           <div class="g-players">${players
             .map(p=>`<span class="pl"><span class="pn">${p.name}</span><span class="pp">${p.pos}</span><span class="pc"><em class="for">${p.mine}</em><i>/</i><em class="ag">${p.against}</em></span></span>`).join("")}</div>
         </div>
-        <div class="g-detail">${players.map(p=>`
-          <div class="wp">
-            <div class="wp-name">${p.name} <em>${p.pos} &middot; ${p.nfl}</em></div>
-            ${p.forMe.length?`<div class="wp-side"><span class="wlbl for">starts for you</span><span class="wts">${teamList(p.forMe,false)}</span></div>`:""}
-            ${p.vsMe.length?`<div class="wp-side"><span class="wlbl ag">starts against you</span><span class="wts">${teamList(p.vsMe,true)}</span></div>`:""}
-          </div>`).join("")}</div>
+        <div class="g-detail">${players.map(block).join("")}${
+          rest.length ? `<div class="wp-more">Also in this game</div>${rest.map(block).join("")}` : ""}</div>
       </div>`;
     }).join("");
 
